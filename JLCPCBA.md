@@ -107,3 +107,17 @@ On the downside, in addition to the relatively small additional cost, the colors
 I add some through-hole components to almost every design these days.  I've standardized on 2x 3-pin headers from my footswitch breakout, so I'll include the JST "PH" style headers on all of my designs, and just pay the extra ~$4 to have those soldered on.  Then I can just use pre-made 22 gauge PH connectors to hook everything up instead of screwing around with soldering wires to things.  I know people love the look of the honkin' romex-lookin 14 gauge solid wire routing in their pedals but that sucker goes right into a 0.5mm x 0.035mm PCB trace so what's the point.
 
 Trimpots are another place where I've found it worthwhile to have them soldered by JLC, since many effects pedals have a trimpot for adjusting bias.
+
+### More Price Hacking: JLC Parts Library
+
+Another trick I've recently started using to keep prices down is to use the JLC 'My Parts' library. How much this helps depends on how many boards you buy and what kind of quantities you buy them in.
+
+You can pre-purchase items, and have JLC 'hold' them in a personal inventory. I imagine that in practice these don't actually get put in a dedicated inventory, but it gives JLC an idea of the minimum quantity of items to have on hand. The nice thing here is that you can take advantage of the quantity price breaks on parts that you use in multiple designs, or in the same design across multiple orders. The op-amps and C0G capacitors which are (relatively) expensive per-part might be 20-50% cheaper if you hit one of the quantity price breaks. As an example, the LM137000 from TI are ~$0.65/each for qty 1, but ~$0.45 for qty 30+. So if you think you'll be using a lot of a particular part now and in the future, it can make sense to pre-purchase these and 'draw down' the quantity as you use them.
+
+For things like electrolytics I've found that it helps because there are just so damn many to choose from. I'll just find one that works and put it in my parts library and that effectively 'bookmarks' it for me and makes it easy to choose which of the 348 different 100uF 35V caps to use.
+
+JLC will automatically use parts out of your inventory first. They'll then dip into 'normal' inventory if you stock yourself out. I'm not sure how the pricing works for this, I haven't managed to do it yet, but I imagine it goes back to standard quantity pricing after you've stocked out.
+
+Obviously this only saves you money if you use up all of the stock you buy. If you decide you don't need a particular item any more, you can resell it, though. You'll notice on some parts when you are buying them that there is an 'Idle Parts' inventory. This is from other users on JLC reselling items that they've already purchased from their own (virtual) inventory.
+
+You don't pay tariffs when you buy the items for your personal inventory -- only when they get used in a design and shipped to you. You pay the tariff on the price-per-part that you originally purchased the component.
