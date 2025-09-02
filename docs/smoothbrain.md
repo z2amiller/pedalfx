@@ -18,3 +18,6 @@ territory.
 * 0.2:  Switched some components inadvertantly connected to GND instead of VREF
 * 0.3:  Fixed some grounding and op-amp feedback issues.
 
+## Links
+
+* [Internal Repository](https://github.com/z2amiller/fx-Tommy)
