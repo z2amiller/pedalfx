@@ -10,6 +10,8 @@ territory.
 
 * Internal switch to change diode clipping from symmetric to asymmetric.
 
+## Current Revision: 0.3
+
 ## Revision History:
 
 * 0.1:  Initial Version
