@@ -12,7 +12,7 @@ territory.
 
 ## Revision History:
 
-0.1:  Initial Version
-0.2:  Switched some components inadvertantly connected to GND instead of VREF
-0.3:  Fixed some grounding and op-amp feedback issues.
+* 0.1:  Initial Version
+* 0.2:  Switched some components inadvertantly connected to GND instead of VREF
+* 0.3:  Fixed some grounding and op-amp feedback issues.
 
