@@ -5,5 +5,6 @@ based on a trace of the Pearl OC-07 octave pedal.
 
 
 ## Revision History
-0.1.  Prototype
-0.2.  Fixed inverse polarity on op-amps. :-(
+
+* 0.1.  Prototype
+* 0.2.  Fixed inverse polarity on op-amps. :-(
