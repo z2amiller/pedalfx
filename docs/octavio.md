@@ -9,3 +9,7 @@ based on a trace of the Pearl OC-07 octave pedal.
 
 * 0.1.  Prototype
 * 0.2.  Fixed inverse polarity on op-amps. :-(
+
+## Links
+
+* [Internal Repository](https://github.com/z2amiller/fx-OneUpTwoDown)
