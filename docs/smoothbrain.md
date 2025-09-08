@@ -23,10 +23,25 @@ amiplifier stage to give more clarity to the mids and highs in the later stage.
 
 ## Revision History:
 
-* 0.4:  Added socket for op-amp and through-hole capacitor to help tune feedback issues.
-* 0.3:  Fixed some grounding and op-amp feedback issues.
-* 0.2:  Switched some components inadvertantly connected to GND instead of VREF
-* 0.1:  Initial Version
+### 0.4:  Added socket for op-amp and through-hole capacitor to help tune feedback issues.
+
+This revision fixes the shorted via, and also replaces the SMD op-amp with a socketed DIP version
+to allow some more experimentation with different op-amps.
+
+### 0.3:  Fixed some grounding and op-amp feedback issues.
+
+This one has an internal short from VREF to GND. :-(
+
+It is fixable by drilling out the shorted via, and also requires some modifications to the capacitor
+(adding more capacitance to the feedback loop), as well as very careful routing of the internal wiring.
+If the internal wiring (specitically, the input/output wires) get too close to the board, it can start to
+oscillate and whine when the 'high gain' switch is engaged.
+
+This also switches from a 2-layer to a 4-layer design in an attempt to control the noise and feedback.
+
+### 0.2:  Switched some components inadvertantly connected to GND instead of VREF
+
+### 0.1:  Initial Version
 
 ## Links
 
