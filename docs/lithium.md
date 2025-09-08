@@ -2,6 +2,8 @@
 
 This is based on the AionFX Lithium Chorus, which in turn is based on the Small Clone Chorus.
 
+This pedal was famously used by Kurt Cobain on 'Nevermind' and later albums.
+
 ## Controls
 
 * Depth (How 'deep' the chorus effect is)
