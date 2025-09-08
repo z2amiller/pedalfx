@@ -18,6 +18,10 @@ set to zero except for the 2-down control.
 *  1-Down
 *  2-Down
 
+## Internal Controls
+
+* None
+
 ## Current Revision: 0.3
 
 ## Revision History
