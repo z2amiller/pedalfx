@@ -42,3 +42,12 @@ Here are the files to build one of your own, at JLC using the PCBA service.
 * [Gerbers](https://z2amiller.github.io/pedalfx/octavio/GERBER-Octavio.zip)
 * [Bill of Materials](https://z2amiller.github.io/pedalfx/octavio/BOM-Octavio.csv)
 * [Component Placements](https://z2amiller.github.io/pedalfx/octavio/CPL-Octavio.csv)
+
+This fits a 'PedalPCB Standard' 4-control square layout.
+
+[Here](https://drill.taydakits.com/box-designs/new?public_key=VzNRVkYzSm1uZ2xOZDdkOWMxQzZ2QT09Cg==)
+is the Tayda drill template -- note that this template uses the
+['PedalPCB IO Board' template](https://www.pedalpcb.com/product/pcb429/) on Side B (Top) with the
+rectangular cutout for the power, so if you use offboard jacks you'll want to modify the enclosure.
+
+
