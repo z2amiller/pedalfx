@@ -2,6 +2,8 @@
 
 This is based on the PedalPCB Kadundra Overdrive, which is based on the Vemuram Karen.
 
+Maybe some day I'll think of a better name for this version of the pedal!
+
 ## Controls
 
 * Volume
