@@ -20,7 +20,7 @@ set to zero except for the 2-down control.
 
 ## Internal Controls
 
-* None
+* 100K trimpot to tune the bias.
 
 ## Current Revision: 0.3
 
