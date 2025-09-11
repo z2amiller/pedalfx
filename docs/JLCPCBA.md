@@ -92,6 +92,32 @@ Once you select the PCBA option at JLC, you'll have a screen where you can uploa
 
 Note that sometimes some of the components will be rotated the wrong way on your board!  JLC gives you a UI that lets you fix component rotation issues.  The Bouni tools actually have a rotation manager built in as well that you can use to more permanently fix the rotations so you don't need to fix them in the JLC UI after you upload.
 
+## More Price Hacking
+
+In addition to focusing on 'Basic' parts for assembly, there are a few other tips and tricks to help keep the prices of your board down when doing PCBA.
+
+### JLC Parts Library
+
+Another trick I've recently started using to keep prices down is to use the JLC 'My Parts' library. How much this helps depends on how many boards you buy and what kind of quantities you buy them in.
+
+You can pre-purchase items, and have JLC 'hold' them in a personal inventory. I imagine that in practice these don't actually get put in a dedicated inventory, but it gives JLC an idea of the minimum quantity of items to have on hand. The nice thing here is that you can take advantage of the quantity price breaks on parts that you use in multiple designs, or in the same design across multiple orders. The op-amps and C0G capacitors which are (relatively) expensive per-part might be 20-50% cheaper if you hit one of the quantity price breaks. As an example, the LM137000 from TI are ~$0.65/each for qty 1, but ~$0.45 for qty 30+. So if you think you'll be using a lot of a particular part now and in the future, it can make sense to pre-purchase these and 'draw down' the quantity as you use them.
+
+For things like electrolytics I've found that it helps because there are just so damn many to choose from. I'll just find one that works and put it in my parts library and that effectively 'bookmarks' it for me and makes it easy to choose which of the 348 different 100uF 35V caps to use.
+
+JLC will automatically use parts out of your inventory first. They'll then dip into 'normal' inventory if you stock yourself out. I'm not sure how the pricing works for this, I haven't managed to do it yet, but I imagine it goes back to standard quantity pricing after you've stocked out.
+
+Obviously this only saves you money if you use up all of the stock you buy. If you decide you don't need a particular item any more, you can resell it, though. You'll notice on some parts when you are buying them that there is an 'Idle Parts' inventory. This is from other users on JLC reselling items that they've already purchased from their own (virtual) inventory.
+
+You don't pay tariffs when you buy the items for your personal inventory -- only when they get used in a design and shipped to you. You pay the tariff on the price-per-part that you originally purchased the component.
+
+### 'Promotional Extended' parts
+
+There's a filter called 'Promotional Extended' on each parts page.   This is similar to the 'Basic' filter.  Components that ar ein the 'Promotional Extended' category are similar to the Basic components, in that they do not have the $3 setup cost.
+
+The only downside is that it seems that there is less of a guarantee that these parts will stay under the 'Promotional' categorization, so it's possible if you re-create a build from a BOM you might run into these fees.  It's also annoying because nowhere in the BOM UI does it tell you that these are promotional extended parts.   You can see them in the normal search UI (The "Extended" tag has a blue thumbs-up icon next to it, to indicate it's an extended part).  But in the BOM UI, everything still says 'Extended' and it's not until you get to the total price / invoice do you find out that you actually didn't pay the $3 setup fee for some of your components.
+
+This opens up the door to quite a few additional components -- quite a few resistor values, some small caps, and a lot of transistors and diodes fall under the 'Promotional Extended' banner - even a few power supply / LDO ICs.
+
 ## Off In The Weeds
 
 Here's some other random info that may or may not help that didn't fit in the other sections.
@@ -108,16 +134,4 @@ I add some through-hole components to almost every design these days.  I've stan
 
 Trimpots are another place where I've found it worthwhile to have them soldered by JLC, since many effects pedals have a trimpot for adjusting bias.
 
-### More Price Hacking: JLC Parts Library
 
-Another trick I've recently started using to keep prices down is to use the JLC 'My Parts' library. How much this helps depends on how many boards you buy and what kind of quantities you buy them in.
-
-You can pre-purchase items, and have JLC 'hold' them in a personal inventory. I imagine that in practice these don't actually get put in a dedicated inventory, but it gives JLC an idea of the minimum quantity of items to have on hand. The nice thing here is that you can take advantage of the quantity price breaks on parts that you use in multiple designs, or in the same design across multiple orders. The op-amps and C0G capacitors which are (relatively) expensive per-part might be 20-50% cheaper if you hit one of the quantity price breaks. As an example, the LM137000 from TI are ~$0.65/each for qty 1, but ~$0.45 for qty 30+. So if you think you'll be using a lot of a particular part now and in the future, it can make sense to pre-purchase these and 'draw down' the quantity as you use them.
-
-For things like electrolytics I've found that it helps because there are just so damn many to choose from. I'll just find one that works and put it in my parts library and that effectively 'bookmarks' it for me and makes it easy to choose which of the 348 different 100uF 35V caps to use.
-
-JLC will automatically use parts out of your inventory first. They'll then dip into 'normal' inventory if you stock yourself out. I'm not sure how the pricing works for this, I haven't managed to do it yet, but I imagine it goes back to standard quantity pricing after you've stocked out.
-
-Obviously this only saves you money if you use up all of the stock you buy. If you decide you don't need a particular item any more, you can resell it, though. You'll notice on some parts when you are buying them that there is an 'Idle Parts' inventory. This is from other users on JLC reselling items that they've already purchased from their own (virtual) inventory.
-
-You don't pay tariffs when you buy the items for your personal inventory -- only when they get used in a design and shipped to you. You pay the tariff on the price-per-part that you originally purchased the component.
