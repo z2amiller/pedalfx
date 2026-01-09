@@ -63,7 +63,7 @@ There are a couple of ways around this, see ‘Daughterboards’ and ‘One Piec
 Boards’.
 
 ### KiCad’s Default TO-92 Through Hole Transistor Footprints Kinda Suck
-![48e969bd-c42c-4c21-9a74-db5709d82c0c](https://github.com/user-attachments/assets/edcec1e7-41a9-46c6-b6fe-09fc26831dcc)
+![](https://github.com/user-attachments/assets/edcec1e7-41a9-46c6-b6fe-09fc26831dcc)
 
 The holes are really close together and sometimes not enough soldermask gets
 between them. Then you end up soldering the pins of your transistors together.
@@ -80,7 +80,7 @@ your value and footprint match the text. When adding LCSC part numbers to a ton
 of components it’s easy to cut-and-paste the wrong value somewhere. JLC will
 sometimes flag mismatched footprints but not mismatched values.
 
-![5d253d1a-3e6f-4b6e-95e7-1595d7ff2f9f](https://github.com/user-attachments/assets/ff4adf77-817a-4b9b-bfac-9895d64a6802)
+![](https://github.com/user-attachments/assets/ff4adf77-817a-4b9b-bfac-9895d64a6802)
 
 ### PCBA: Doublecheck Your Placements
 
@@ -95,7 +95,7 @@ component 90 degrees CCW). You can also fix this in the bouni tools ‘Rotation
 Manager’ by right clicking and adding a ‘rotate by \<name or footprint\>’ and
 adding a new rotation rule.
 
-![0c14f0b7-70fe-468e-affa-efca779ad785](https://github.com/user-attachments/assets/0402017f-9f5f-453b-9a8d-7a2f0be6070c)
+![](https://github.com/user-attachments/assets/0402017f-9f5f-453b-9a8d-7a2f0be6070c)
 
 ### Round Your Corners
 
@@ -287,7 +287,7 @@ silkscreen layer to create QR codes. A reasonably sized URL is about 16x16mm, or
 the size of a normal potentiometer (e.g. it fits in the space that a pot would
 take on the back of your board).
 
-<img width="273" height="286" alt="Screenshot 2026-01-08 at 9 08 15 PM" src="https://github.com/user-attachments/assets/f643e2ee-2e43-4b43-8a99-aa0856f9b46f" />
+![](https://github.com/user-attachments/assets/f643e2ee-2e43-4b43-8a99-aa0856f9b46f)
 
 ### Templates
 
@@ -309,9 +309,9 @@ done a Fancier template for a full-size one-piece board.
 I’ve made some of my templates available on my [GitHub pedalfx
 repository](https://github.com/z2amiller/pedalfx/).
 
-<img width="432" height="543" alt="Screenshot 2026-01-08 at 8 42 28 PM" src="https://github.com/user-attachments/assets/1b4c8ca8-91ed-4c47-bc0f-44f0663bb5b6" />
+![](https://github.com/user-attachments/assets/1b4c8ca8-91ed-4c47-bc0f-44f0663bb5b6)
 
-![annotely_image](https://github.com/user-attachments/assets/77082ad7-0d9c-4adb-a213-330d53f845bc)
+![](https://github.com/user-attachments/assets/77082ad7-0d9c-4adb-a213-330d53f845bc)
 
 ## Putting it All Together
-![5ac4a013-b09a-4df5-88e3-3c8c4ae26140](https://github.com/user-attachments/assets/b81afddc-a26a-47e1-931e-ced57307b3c7)
+![](https://github.com/user-attachments/assets/b81afddc-a26a-47e1-931e-ced57307b3c7)
