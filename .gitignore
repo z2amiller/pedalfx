@@ -8,8 +8,8 @@
 *.bak
 *.bck
 *.gbr
-jlcpcb/gerber
-jlcpcb/production_files
+jlcpcb/gerber/
+jlcpcb/production_files/
 production/
 *.kicad_pcb-bak
 *.kicad_sch-bak
