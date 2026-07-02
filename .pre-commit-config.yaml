@@ -1,0 +1,10 @@
+repos:
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 1.0.0
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm
+        # Skill files carry YAML frontmatter that mdformat (no frontmatter plugin)
+        # rewrites into broken markdown, so keep it out of .claude/.
+        exclude: '^\.claude/'
