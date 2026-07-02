@@ -1,0 +1,23 @@
+{
+  "skill_name": "first-pcb-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I just finished the layout for my first PCB — can you look over board.kicad_pcb and tell me if it's ready to send to JLCPCB, or if I've missed anything a beginner usually gets wrong?",
+      "expected_output": "Runs pcb_review.py, walks the report section by section in plain language, leads with the highest-impact misses (e.g. mounting holes, outline, ground pour), and explains the why for each rather than just listing tags.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Is my ground pour any good on this board? And are my power traces wide enough? Here's the kicad_pcb.",
+      "expected_output": "Focuses on the POWER & GROUND section: reports pour coverage and island count per layer, stitching via count, and any power/ground nets flagged as thin, tying each to the noise/voltage-drop consequence. Doesn't drown the answer in unrelated sections.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Can I hand-solder this board at home, or do I need to send it out for assembly? Attached is my .kicad_pcb.",
+      "expected_output": "Focuses on the ASSEMBLY section: identifies any small passives, fine-pitch, or leadless/hidden-pad packages, explains which are hand-solderable vs. need hot air/hotplate/PCBA, and flags double-sided SMD if present. Gives a clear verdict.",
+      "files": []
+    }
+  ]
+}
