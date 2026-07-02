@@ -243,3 +243,26 @@ A quick tick-through before you click Order:
   datasheet.
 - [ ] **Order a few extra boards** — they're nearly free at small quantities,
   and you'll want spares for bring-up.
+
+## Let a Robot Check It First
+
+Most of the checklist above can be verified automatically. This repo ships a
+companion AI skill, **first-pcb-review**, that reads a `.kicad_pcb` and walks
+through these recommendations for you — flagging missing mounting holes, a
+fragmented ground pour, hair-thin power traces, hard-to-solder packages, absent
+silkscreen, and more. It even includes an optional check for signal traces
+running alongside power rails, a common source of noise.
+
+You'll find it in this repo at `.claude/skills/first-pcb-review/`. If you open
+the project in [Claude Code](https://claude.com/claude-code), the skill is
+discovered automatically — just ask it to *"review my board"* or *"is this ready
+to fab?"* and it will run the check and explain each finding. You can also run
+the script directly, with no KiCad install required:
+
+```bash
+python3 .claude/skills/first-pcb-review/scripts/pcb_review.py your_board.kicad_pcb
+```
+
+It's a companion, not a replacement: it checks *practice*, not electrical
+correctness, so you still run ERC and DRC in KiCad yourself. Think of it as a
+second pair of eyes that never forgets an item on the list.
