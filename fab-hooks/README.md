@@ -14,8 +14,9 @@ versions for you.
 
 - `pre_generate.py` (advisory): fails the pre-hook (the plugin then shows a
   Continue/Cancel dialog) if the project isn't a git repo, has no `origin`
-  remote, or the board's title-block revision isn't a valid `vN.M`. An
-  unreachable origin (offline) is only a warning.
+  remote, or the board's revision — read from the title block, falling back to a
+  valid `vN.M` text on silk — isn't valid. An unreachable origin (offline) is
+  only a warning.
 - `post_generate.py`: appends `| date | board | rev | gen | zip-sha12 | | |` to
   `FABLOG.md` at the repo root, commits the project directory (pathspec-scoped,
   so unrelated staged work is never swept in), creates annotated tag
