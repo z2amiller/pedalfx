@@ -458,3 +458,19 @@ def test_set_rev_rejects_invalid_version(tmp_path):
         assert False, "expected ValueError"
     except ValueError:
         pass
+
+
+def test_set_rev_handles_noncanonical_spacing(tmp_path):
+    # (rev  "v0.3") with two spaces must be replaced, not duplicated
+    board = tmp_path / "b.kicad_pcb"
+    board.write_text(BOARD_WITH_REV.replace('(rev "v0.3")', '(rev  "v0.3")'), encoding="utf-8")
+    old = set_board_rev.set_rev(board, "v0.5")
+    assert old == "v0.3"
+    text = board.read_text()
+    assert text.count("(rev") == 1
+    assert fabhooks.title_block_rev(text) == "v0.5"
+
+
+def test_set_rev_cli_reports_missing_file(tmp_path, capsys):
+    assert set_board_rev.main([str(tmp_path / "nope.kicad_pcb"), "v0.1"]) == 1
+    assert "FAIL" in capsys.readouterr().out

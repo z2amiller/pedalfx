@@ -3,14 +3,17 @@
 
 Usage: set_board_rev.py path/to/board.kicad_pcb v0.1
 """
-import re
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import fabhooks
 
-_TB_REV_RE = re.compile(r'\(rev "([^"]*)"\)')
+# Reuse the library's \s+ pattern: a divergent (narrower) regex here would miss
+# a non-canonically-spaced rev and insert a duplicate (rev ...) node.
+_TB_REV_RE = fabhooks._TB_REV_RE
 
 
 def set_rev(board_path: Path, rev: str) -> str:
@@ -36,7 +39,15 @@ def set_rev(board_path: Path, rev: str) -> str:
     else:
         old = ""
         new_block = block.replace("(title_block", f'(title_block\n\t\t(rev "{rev}")', 1)
-    board_path.write_text(text.replace(block, new_block, 1), encoding="utf-8")
+    new_text = text.replace(block, new_block, 1)
+    fd, tmp = tempfile.mkstemp(dir=board_path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(new_text)
+        os.replace(tmp, board_path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
     return old
 
 
@@ -48,7 +59,7 @@ def main(argv=None) -> int:
     board, rev = Path(argv[0]), argv[1]
     try:
         old = set_rev(board, rev)
-    except (ValueError, RuntimeError) as e:
+    except (ValueError, RuntimeError, OSError) as e:
         print(f"FAIL: {e}")
         return 1
     print(f"{board.name}: rev {old!r} -> {rev!r}. Open the board in KiCad to verify.")
