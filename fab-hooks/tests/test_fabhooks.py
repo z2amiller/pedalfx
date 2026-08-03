@@ -1,4 +1,5 @@
 """Tests for fabhooks library."""
+import subprocess
 import sys
 from pathlib import Path
 
@@ -158,17 +159,26 @@ def test_append_fablog_creates_header_then_appends(tmp_path):
     assert text.index(row1.strip()) < text.index(row2.strip())
 
 
-import subprocess
+
+HERMETIC_GIT_ENV = {
+    **__import__("os").environ,
+    "GIT_CONFIG_GLOBAL": "/dev/null",
+    "GIT_CONFIG_SYSTEM": "/dev/null",
+}
+
+
+def _git(args, cwd):
+    subprocess.run(["git", *args], cwd=cwd, check=True, env=HERMETIC_GIT_ENV)
 
 
 def _init_repo(path):
     path.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=path, check=True)
-    subprocess.run(["git", "config", "user.email", "t@t"], cwd=path, check=True)
-    subprocess.run(["git", "config", "user.name", "t"], cwd=path, check=True)
+    _git(["init", "-q", "-b", "main"], path)
+    _git(["config", "user.email", "t@t"], path)
+    _git(["config", "user.name", "t"], path)
     (path / "seed.txt").write_text("seed")
-    subprocess.run(["git", "add", "-A"], cwd=path, check=True)
-    subprocess.run(["git", "commit", "-q", "-m", "seed"], cwd=path, check=True)
+    _git(["add", "-A"], path)
+    _git(["commit", "-q", "-m", "seed"], path)
     return path
 
 
@@ -203,3 +213,18 @@ def test_append_fablog_repairs_missing_trailing_newline(tmp_path):
     lines = log.read_text().splitlines()
     assert lines[-1] == row2.strip()
     assert lines[-2] == row1.strip()
+
+
+def test_origin_reachable_false_for_missing_remote(tmp_path):
+    repo = _init_repo(tmp_path / "repo")
+    _git(["remote", "add", "origin", str(tmp_path / "gone.git")], repo)
+    assert not fabhooks.origin_reachable(repo)
+
+
+def test_append_fablog_writes_header_into_empty_file(tmp_path):
+    (tmp_path / "FABLOG.md").write_text("")
+    row = fabhooks.fablog_row("2026-08-02T14:03", "fx-a", "v0.1", "1", "aaaaaaaaaaaa")
+    fabhooks.append_fablog(tmp_path, row)
+    text = (tmp_path / "FABLOG.md").read_text()
+    assert text.startswith("# Fab Log\n")
+    assert row in text

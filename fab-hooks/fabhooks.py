@@ -6,6 +6,7 @@ entry points stay trivial and everything is testable offline.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -109,24 +110,32 @@ def append_fablog(repo_root: Path | str, row: str) -> Path:
         log.write_text(FABLOG_HEADER + row, encoding="utf-8")
     else:
         existing = log.read_text(encoding="utf-8")
-        prefix = "" if existing.endswith("\n") or not existing else "\n"
+        if not existing:
+            log.write_text(FABLOG_HEADER + row, encoding="utf-8")
+            return log
+        prefix = "" if existing.endswith("\n") else "\n"
         with open(log, "a", encoding="utf-8") as f:
             f.write(prefix + row)
     return log
 
 
-def git(repo: Path, *args: str, check: bool = True, timeout: int = 30):
-    """Run git in repo, capturing output. Raises CalledProcessError when check."""
+def git(repo: Path | str, *args: str, check: bool = True, timeout: int = 30) -> subprocess.CompletedProcess[str]:
+    """Run git in repo, capturing output. Raises CalledProcessError when check.
+
+    GIT_TERMINAL_PROMPT=0 so a credential or host-key prompt fails fast in the
+    headless hook context instead of blocking until the timeout.
+    """
     return subprocess.run(
         ["git", "-C", str(repo), *args],
         check=check,
         timeout=timeout,
         capture_output=True,
         text=True,
+        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
     )
 
 
-def repo_root(path: Path):
+def repo_root(path: Path | str) -> Path | None:
     """Repo toplevel containing path, or None."""
     try:
         r = git(Path(path), "rev-parse", "--show-toplevel", check=False)
@@ -137,8 +146,11 @@ def repo_root(path: Path):
     return Path(r.stdout.strip())
 
 
-def origin_url(root: Path):
-    r = git(root, "remote", "get-url", "origin", check=False)
+def origin_url(root: Path) -> str | None:
+    try:
+        r = git(root, "remote", "get-url", "origin", check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
     return r.stdout.strip() if r.returncode == 0 else None
 
 
@@ -154,11 +166,14 @@ def origin_reachable(root: Path, timeout: int = 5) -> bool:
     """
     try:
         r = git(root, "ls-remote", "origin", timeout=timeout, check=False)
-    except subprocess.TimeoutExpired:
+    except (OSError, subprocess.TimeoutExpired):
         return False
     return r.returncode == 0
 
 
 def tag_exists(root: Path, tag: str) -> bool:
-    r = git(root, "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}", check=False)
+    try:
+        r = git(root, "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}", check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
     return r.returncode == 0
