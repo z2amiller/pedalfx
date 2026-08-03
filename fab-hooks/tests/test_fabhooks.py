@@ -109,6 +109,13 @@ def test_board_rev_none_when_title_block_has_no_rev(tmp_path):
     assert fabhooks.board_rev(_write(tmp_path, BOARD_TITLE_BLOCK_NO_REV)) is None
 
 
+
+def test_board_rev_silk_matches_knockout_text(tmp_path):
+    # KiCad 7+ emits (layer "F.SilkS" knockout) for knockout text
+    board = BOARD_NO_TITLE_BLOCK.replace('(layer "F.SilkS")', '(layer "F.SilkS" knockout)')
+    assert fabhooks.board_rev(_write(tmp_path, board)) == "v0.7"
+
+
 def test_is_valid_rev():
     assert fabhooks.is_valid_rev("v0.1")
     assert fabhooks.is_valid_rev("v12.3")

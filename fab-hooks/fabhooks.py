@@ -53,7 +53,7 @@ def silk_rev(board_text: str) -> str | None:
     """First gr_text on a silkscreen layer matching vN.M, or None."""
     for m in _GR_TEXT_REV_RE.finditer(board_text):
         block = balanced_block(board_text, m.start())
-        if re.search(r'\(layer\s+"[^"]*SilkS[^"]*"\)', block):
+        if re.search(r'\(layer\s+"[^"]*SilkS[^"]*"', block):
             return m.group(1)
     return None
 
