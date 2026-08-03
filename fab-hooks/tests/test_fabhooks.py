@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import fabhooks
+import pre_generate
 
 BOARD_WITH_REV = """(kicad_pcb (version 20240108) (generator "pcbnew")
 \t(title_block
@@ -228,3 +229,51 @@ def test_append_fablog_writes_header_into_empty_file(tmp_path):
     text = (tmp_path / "FABLOG.md").read_text()
     assert text.startswith("# Fab Log\n")
     assert row in text
+
+
+def _board_file(path, text=BOARD_WITH_REV):
+    p = path / "board.kicad_pcb"
+    p.write_text(text, encoding="utf-8")
+    return p
+
+
+def _env(project_dir, board_path):
+    return {
+        "JLCPCB_HOOK_STAGE": "pre",
+        "JLCPCB_PROJECT_DIR": str(project_dir),
+        "JLCPCB_BOARD_PATH": str(board_path),
+    }
+
+
+def test_pre_fails_outside_git_repo(tmp_path, capsys):
+    board = _board_file(tmp_path)
+    assert pre_generate.main(env=_env(tmp_path, board)) == 1
+    out = capsys.readouterr().out
+    assert "not a git repository" in out
+
+
+def test_pre_fails_without_origin(tmp_path, capsys):
+    repo = _init_repo(tmp_path / "repo")
+    board = _board_file(repo)
+    assert pre_generate.main(env=_env(repo, board)) == 1
+    assert "origin" in capsys.readouterr().out
+
+
+def test_pre_fails_on_bad_rev(tmp_path, capsys):
+    repo = _init_repo(tmp_path / "repo")
+    bare = tmp_path / "o.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True, env=HERMETIC_GIT_ENV)
+    _git(["remote", "add", "origin", str(bare)], repo)
+    board = _board_file(repo, BOARD_TEMPLATE_REV.replace('(gr_text "v9.9"', '(gr_text "x"'))
+    assert pre_generate.main(env=_env(repo, board)) == 1
+    assert "revision" in capsys.readouterr().out
+
+
+def test_pre_passes_when_all_good(tmp_path, capsys):
+    repo = _init_repo(tmp_path / "repo")
+    bare = tmp_path / "o.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True, env=HERMETIC_GIT_ENV)
+    _git(["remote", "add", "origin", str(bare)], repo)
+    board = _board_file(repo)
+    assert pre_generate.main(env=_env(repo, board)) == 0
+    assert "OK" in capsys.readouterr().out
