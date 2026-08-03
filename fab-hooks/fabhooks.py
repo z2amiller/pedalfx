@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import subprocess
 from pathlib import Path
 
 REV_RE = re.compile(r"^v\d+\.\d+$")
@@ -93,7 +94,7 @@ def fablog_row(date_iso: str, board: str, rev: str, gen: str, sha12: str) -> str
     return f"| {date_iso} | {board} | {rev} | {gen} | {sha12} | | |\n"
 
 
-def sha256_file(path: Path, chars: int = 12) -> str:
+def sha256_file(path: Path | str, chars: int = 12) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(65536), b""):
@@ -101,12 +102,63 @@ def sha256_file(path: Path, chars: int = 12) -> str:
     return h.hexdigest()[:chars]
 
 
-def append_fablog(repo_root: Path, row: str) -> Path:
+def append_fablog(repo_root: Path | str, row: str) -> Path:
     """Append a row to FABLOG.md at the repo root, creating it with header if absent."""
     log = Path(repo_root) / FABLOG_NAME
     if not log.exists():
         log.write_text(FABLOG_HEADER + row, encoding="utf-8")
     else:
+        existing = log.read_text(encoding="utf-8")
+        prefix = "" if existing.endswith("\n") or not existing else "\n"
         with open(log, "a", encoding="utf-8") as f:
-            f.write(row)
+            f.write(prefix + row)
     return log
+
+
+def git(repo: Path, *args: str, check: bool = True, timeout: int = 30):
+    """Run git in repo, capturing output. Raises CalledProcessError when check."""
+    return subprocess.run(
+        ["git", "-C", str(repo), *args],
+        check=check,
+        timeout=timeout,
+        capture_output=True,
+        text=True,
+    )
+
+
+def repo_root(path: Path):
+    """Repo toplevel containing path, or None."""
+    try:
+        r = git(Path(path), "rev-parse", "--show-toplevel", check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if r.returncode != 0:
+        return None
+    return Path(r.stdout.strip())
+
+
+def origin_url(root: Path):
+    r = git(root, "remote", "get-url", "origin", check=False)
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def origin_reachable(root: Path, timeout: int = 5) -> bool:
+    """True if origin can be contacted, regardless of whether it has any refs yet.
+
+    Deliberately omits --exit-code and a pinned ref (e.g. HEAD): a freshly
+    created bare origin has no refs at all, and its symbolic HEAD may point at
+    a branch name (e.g. "master") that was never created, so pinning to HEAD
+    with --exit-code reports "unreachable" for a perfectly reachable remote.
+    Non-zero here (typically 128) means the remote genuinely could not be
+    contacted.
+    """
+    try:
+        r = git(root, "ls-remote", "origin", timeout=timeout, check=False)
+    except subprocess.TimeoutExpired:
+        return False
+    return r.returncode == 0
+
+
+def tag_exists(root: Path, tag: str) -> bool:
+    r = git(root, "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}", check=False)
+    return r.returncode == 0

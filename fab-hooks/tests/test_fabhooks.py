@@ -156,3 +156,50 @@ def test_append_fablog_creates_header_then_appends(tmp_path):
     assert text.count("| Date |") == 1  # header written exactly once
     assert row1 in text and row2 in text
     assert text.index(row1.strip()) < text.index(row2.strip())
+
+
+import subprocess
+
+
+def _init_repo(path):
+    path.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t"], cwd=path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=path, check=True)
+    (path / "seed.txt").write_text("seed")
+    subprocess.run(["git", "add", "-A"], cwd=path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "seed"], cwd=path, check=True)
+    return path
+
+
+def test_repo_root(tmp_path):
+    repo = _init_repo(tmp_path / "repo")
+    sub = repo / "sub"
+    sub.mkdir()
+    assert fabhooks.repo_root(sub) == repo
+    assert fabhooks.repo_root(tmp_path) is None
+
+
+def test_origin_url_and_tag_exists(tmp_path):
+    repo = _init_repo(tmp_path / "repo")
+    assert fabhooks.origin_url(repo) is None
+    bare = tmp_path / "origin.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True)
+    subprocess.run(["git", "remote", "add", "origin", str(bare)], cwd=repo, check=True)
+    assert fabhooks.origin_url(repo) == str(bare)
+    assert fabhooks.origin_reachable(repo)
+    assert not fabhooks.tag_exists(repo, "fx-x-v0.1-g1")
+    subprocess.run(["git", "tag", "fx-x-v0.1-g1"], cwd=repo, check=True)
+    assert fabhooks.tag_exists(repo, "fx-x-v0.1-g1")
+
+
+def test_append_fablog_repairs_missing_trailing_newline(tmp_path):
+    row1 = fabhooks.fablog_row("2026-08-02T14:03", "fx-a", "v0.1", "1", "aaaaaaaaaaaa")
+    row2 = fabhooks.fablog_row("2026-08-02T15:00", "fx-a", "v0.1", "2", "bbbbbbbbbbbb")
+    fabhooks.append_fablog(tmp_path, row1)
+    log = tmp_path / "FABLOG.md"
+    log.write_text(log.read_text().rstrip("\n"))  # simulate editor stripping newline
+    fabhooks.append_fablog(tmp_path, row2)
+    lines = log.read_text().splitlines()
+    assert lines[-1] == row2.strip()
+    assert lines[-2] == row1.strip()
