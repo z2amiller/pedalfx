@@ -7,6 +7,7 @@ commit is never empty on unchanged re-generates.
 """
 import argparse
 import os
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +29,10 @@ def main(argv=None, env=None) -> int:
         zip_path = Path(env["JLCPCB_ARTIFACT_GERBER_ZIP"])
     except KeyError as e:
         print(f"FAIL: missing env var {e} -- run via kicad-jlcpcb-tools generation hooks")
+        return 1
+
+    if not gen:
+        print("FAIL: JLCPCB_GENERATION_COUNT is empty")
         return 1
 
     board = board_path.stem
@@ -66,17 +71,27 @@ def main(argv=None, env=None) -> int:
         return 0
 
     fabhooks.append_fablog(root, row)
-    fabhooks.git(root, "add", "-A", "--", str(project_dir), fabhooks.FABLOG_NAME)
-    fabhooks.git(root, "commit", "-m", msg)
-    fabhooks.git(root, "tag", "-a", tag, "-m", msg)
+    try:
+        fabhooks.git(root, "add", "-A", "--", str(project_dir), fabhooks.FABLOG_NAME)
+        fabhooks.git(root, "commit", "-m", msg, "--", str(project_dir), fabhooks.FABLOG_NAME)
+        fabhooks.git(root, "tag", "-a", tag, "-m", msg)
+    except subprocess.CalledProcessError as e:
+        detail = ((e.stderr or "") + (e.stdout or "")).strip()
+        print(f"FAIL: {' '.join(e.cmd[3:])!r} failed:\n{detail}\n"
+              "Nothing was pushed -- fix the issue and re-generate.")
+        return 1
+    except (subprocess.TimeoutExpired, OSError) as e:
+        print(f"FAIL: git failed ({e}) -- nothing was pushed; fix the issue and re-generate.")
+        return 1
     print(f"committed and tagged {tag} ({sha})")
 
     try:
-        fabhooks.git(root, "push", "origin", "HEAD", timeout=45)
-        fabhooks.git(root, "push", "origin", tag, timeout=45)
-    except Exception as e:  # push is the only network step; state is already local
-        print(f"FAIL: push failed ({e}). Commit and tag are safe locally. "
-              f"Recover with: git push origin HEAD {tag}")
+        fabhooks.git(root, "push", "--atomic", "origin", "HEAD", f"refs/tags/{tag}", timeout=45)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as e:
+        detail = (getattr(e, "stderr", "") or "").strip()
+        print(f"FAIL: push failed. Commit and tag are safe locally.\n{detail}\n"
+              f"If origin has newer commits (e.g. FABLOG edited on GitHub): "
+              f"git pull --rebase, then: git push origin HEAD {tag}")
         return 1
     print(f"pushed HEAD and {tag} to origin")
     return 0

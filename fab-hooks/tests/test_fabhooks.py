@@ -8,6 +8,14 @@ import fabhooks
 import pre_generate
 import post_generate
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_git_env(monkeypatch):
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", "/dev/null")
+    monkeypatch.setenv("GIT_CONFIG_SYSTEM", "/dev/null")
+
 BOARD_WITH_REV = """(kicad_pcb (version 20240108) (generator "pcbnew")
 \t(title_block
 \t\t(title "Test Board")
@@ -361,3 +369,54 @@ def test_post_rejects_invalid_tag_name(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "not a valid git" in out
     assert not (repo / "FABLOG.md").exists()  # rejected before any mutation
+
+
+def test_post_commit_failure_prints_hook_stderr(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    hook = repo / ".git" / "hooks" / "pre-commit"
+    hook.write_text("#!/bin/sh\necho 'lint failed' >&2\nexit 1\n")
+    hook.chmod(0o755)
+    assert post_generate.main(argv=[], env=env) == 1
+    out = capsys.readouterr().out
+    assert "lint failed" in out
+    assert "FAIL" in out
+
+
+def test_post_commit_leaves_unrelated_staged_work_alone(tmp_path):
+    repo = _init_repo(tmp_path / "repo")
+    bare = tmp_path / "o.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True, env=HERMETIC_GIT_ENV)
+    _git(["remote", "add", "origin", str(bare)], repo)
+    proj = repo / "pedal"
+    proj.mkdir()
+    board = proj / "fx-Sub.kicad_pcb"
+    board.write_text(BOARD_WITH_REV, encoding="utf-8")
+    zipf = proj / "GERBER-fx-Sub.zip"
+    zipf.write_bytes(b"zzz")
+    unrelated = repo / "notes.md"
+    unrelated.write_text("wip")
+    _git(["add", "notes.md"], repo)
+    env = {
+        "JLCPCB_PROJECT_DIR": str(proj),
+        "JLCPCB_BOARD_PATH": str(board),
+        "JLCPCB_GENERATION_COUNT": "3",
+        "JLCPCB_ARTIFACT_GERBER_ZIP": str(zipf),
+    }
+    assert post_generate.main(argv=[], env=env) == 0
+    committed = subprocess.run(
+        ["git", "show", "--name-only", "--format=", "HEAD"],
+        cwd=repo, capture_output=True, text=True,
+    ).stdout
+    assert "notes.md" not in committed
+    staged = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=repo, capture_output=True, text=True,
+    ).stdout
+    assert "notes.md" in staged  # still staged, not swept into the fab commit
+
+
+def test_post_fails_on_empty_generation_count(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    env["JLCPCB_GENERATION_COUNT"] = ""
+    assert post_generate.main(argv=[], env=env) == 1
+    assert "JLCPCB_GENERATION_COUNT" in capsys.readouterr().out
