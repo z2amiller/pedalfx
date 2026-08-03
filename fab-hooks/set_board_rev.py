@@ -28,8 +28,8 @@ def set_rev(board_path: Path, rev: str) -> str:
     i = text.find("(title_block")
     if i < 0:
         raise RuntimeError(
-            "no title_block in board file -- set any revision once in KiCad "
-            "(File > Board Setup > Title Block), then re-run"
+            "no title_block in board file -- set any revision once in the PCB editor "
+            "(File > Page Settings > Revision), then re-run"
         )
     block = fabhooks.balanced_block(text, i)
     m = _TB_REV_RE.search(block)

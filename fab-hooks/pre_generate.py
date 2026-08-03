@@ -54,7 +54,7 @@ def main(env=None) -> int:
             what = "no board revision found" if rev is None else f"board revision {rev!r} is not vN.M"
             failures.append(
                 f"{what} -- set it with set_board_rev.py "
-                "(or KiCad File > Board Setup) so the fab tag is meaningful"
+                "(or pcbnew File > Page Settings) so the fab tag is meaningful"
             )
 
     for w in warnings:
