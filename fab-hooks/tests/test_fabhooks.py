@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import fabhooks
 import pre_generate
+import post_generate
 
 BOARD_WITH_REV = """(kicad_pcb (version 20240108) (generator "pcbnew")
 \t(title_block
@@ -287,3 +288,76 @@ def test_pre_warns_but_passes_when_origin_unreachable(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "WARN" in out
     assert "FAIL" not in out
+
+
+def _full_setup(tmp_path):
+    """Repo with origin + board file + fake gerber zip; returns (repo, bare, env)."""
+    repo = _init_repo(tmp_path / "repo")
+    bare = tmp_path / "o.git"
+    subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True, env=HERMETIC_GIT_ENV)
+    _git(["remote", "add", "origin", str(bare)], repo)
+    board = repo / "fx-Test.kicad_pcb"
+    board.write_text(BOARD_WITH_REV, encoding="utf-8")
+    outdir = repo / "jlcpcb" / "production_files"
+    outdir.mkdir(parents=True)
+    zipf = outdir / "GERBER-fx-Test.zip"
+    zipf.write_bytes(b"fake gerbers")
+    env = {
+        "JLCPCB_HOOK_STAGE": "post",
+        "JLCPCB_PROJECT_DIR": str(repo),
+        "JLCPCB_BOARD_PATH": str(board),
+        "JLCPCB_GENERATION_COUNT": "7",
+        "JLCPCB_ARTIFACT_GERBER_ZIP": str(zipf),
+    }
+    return repo, bare, env
+
+
+def test_post_dry_run_mutates_nothing(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    assert post_generate.main(argv=["--dry-run"], env=env) == 0
+    assert "DRY RUN" in capsys.readouterr().out
+    assert not (repo / "FABLOG.md").exists()
+    assert not fabhooks.tag_exists(repo, "fx-Test-v0.3-g7")
+
+
+def test_post_full_run_commits_tags_pushes(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    assert post_generate.main(argv=[], env=env) == 0
+    log = (repo / "FABLOG.md").read_text()
+    assert "| fx-Test | v0.3 | 7 |" in log
+    assert fabhooks.tag_exists(repo, "fx-Test-v0.3-g7")
+    msg = subprocess.run(
+        ["git", "log", "-1", "--format=%s"], cwd=repo, capture_output=True, text=True
+    ).stdout.strip()
+    assert msg == "fx-Test v0.3 fab outputs (g7)"
+    remote_tags = subprocess.run(
+        ["git", "tag"], cwd=bare, capture_output=True, text=True
+    ).stdout
+    assert "fx-Test-v0.3-g7" in remote_tags
+
+
+def test_post_refuses_existing_tag(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    _git(["tag", "fx-Test-v0.3-g7"], repo)
+    assert post_generate.main(argv=[], env=env) == 2
+    assert "already exists" in capsys.readouterr().out
+
+
+def test_post_push_failure_keeps_local_state(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    _git(["remote", "set-url", "origin", str(tmp_path / "missing.git")], repo)
+    assert post_generate.main(argv=[], env=env) == 1
+    out = capsys.readouterr().out
+    assert "push failed" in out
+    assert fabhooks.tag_exists(repo, "fx-Test-v0.3-g7")  # local state preserved
+
+
+def test_post_rejects_invalid_tag_name(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    board = repo / "fx Bad Name.kicad_pcb"  # spaces -> illegal git ref
+    board.write_text(BOARD_WITH_REV, encoding="utf-8")
+    env["JLCPCB_BOARD_PATH"] = str(board)
+    assert post_generate.main(argv=[], env=env) == 1
+    out = capsys.readouterr().out
+    assert "not a valid git" in out
+    assert not (repo / "FABLOG.md").exists()  # rejected before any mutation
