@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import fabhooks
 import pre_generate
 import post_generate
+import set_board_rev
 
 import pytest
 
@@ -420,3 +421,40 @@ def test_post_fails_on_empty_generation_count(tmp_path, capsys):
     env["JLCPCB_GENERATION_COUNT"] = ""
     assert post_generate.main(argv=[], env=env) == 1
     assert "JLCPCB_GENERATION_COUNT" in capsys.readouterr().out
+
+
+def test_set_rev_replaces_existing(tmp_path):
+    board = tmp_path / "b.kicad_pcb"
+    board.write_text(BOARD_TEMPLATE_REV, encoding="utf-8")
+    old = set_board_rev.set_rev(board, "v0.1")
+    assert old == "1.0"
+    assert fabhooks.title_block_rev(board.read_text()) == "v0.1"
+
+
+def test_set_rev_inserts_when_missing(tmp_path):
+    board = tmp_path / "b.kicad_pcb"
+    board.write_text(BOARD_WITH_REV.replace('\t\t(rev "v0.3")\n', ""), encoding="utf-8")
+    old = set_board_rev.set_rev(board, "v0.2")
+    assert old == ""
+    assert fabhooks.title_block_rev(board.read_text()) == "v0.2"
+
+
+def test_set_rev_aborts_on_kicad_lock(tmp_path):
+    board = tmp_path / "b.kicad_pcb"
+    board.write_text(BOARD_WITH_REV, encoding="utf-8")
+    (tmp_path / "~b.kicad_pcb.lck").write_text("")
+    try:
+        set_board_rev.set_rev(board, "v0.1")
+        assert False, "expected RuntimeError"
+    except RuntimeError as e:
+        assert "close KiCad" in str(e)
+
+
+def test_set_rev_rejects_invalid_version(tmp_path):
+    board = tmp_path / "b.kicad_pcb"
+    board.write_text(BOARD_WITH_REV, encoding="utf-8")
+    try:
+        set_board_rev.set_rev(board, "0.1")
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
