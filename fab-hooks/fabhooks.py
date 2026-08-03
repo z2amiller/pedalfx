@@ -5,6 +5,7 @@ entry points stay trivial and everything is testable offline.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 
@@ -69,3 +70,43 @@ def board_rev(board_path: Path | str) -> str | None:
     if is_valid_rev(tb):
         return tb
     return silk_rev(text)
+
+
+FABLOG_NAME = "FABLOG.md"
+FABLOG_HEADER = (
+    "# Fab Log\n"
+    "\n"
+    "| Date | Board | Rev | Gen | Gerber SHA256 | JLC Order # | Notes |\n"
+    "|---|---|---|---|---|---|---|\n"
+)
+
+
+def tag_name(board: str, rev: str, gen: str) -> str:
+    return f"{board}-{rev}-g{gen}"
+
+
+def commit_message(board: str, rev: str, gen: str) -> str:
+    return f"{board} {rev} fab outputs (g{gen})"
+
+
+def fablog_row(date_iso: str, board: str, rev: str, gen: str, sha12: str) -> str:
+    return f"| {date_iso} | {board} | {rev} | {gen} | {sha12} | | |\n"
+
+
+def sha256_file(path: Path, chars: int = 12) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()[:chars]
+
+
+def append_fablog(repo_root: Path, row: str) -> Path:
+    """Append a row to FABLOG.md at the repo root, creating it with header if absent."""
+    log = Path(repo_root) / FABLOG_NAME
+    if not log.exists():
+        log.write_text(FABLOG_HEADER + row, encoding="utf-8")
+    else:
+        with open(log, "a", encoding="utf-8") as f:
+            f.write(row)
+    return log

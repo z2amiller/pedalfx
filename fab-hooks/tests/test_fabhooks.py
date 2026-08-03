@@ -124,3 +124,35 @@ def test_is_valid_rev():
     assert not fabhooks.is_valid_rev("")
     assert not fabhooks.is_valid_rev(None)
     assert not fabhooks.is_valid_rev("v1.0\n")
+
+
+def test_tag_and_commit_rendering():
+    assert fabhooks.tag_name("fx-BloodySMD", "v0.1", "17") == "fx-BloodySMD-v0.1-g17"
+    assert (
+        fabhooks.commit_message("fx-BloodySMD", "v0.1", "17")
+        == "fx-BloodySMD v0.1 fab outputs (g17)"
+    )
+
+
+def test_fablog_row():
+    row = fabhooks.fablog_row("2026-08-02T14:03", "fx-BloodySMD", "v0.1", "17", "a1b2c3d4e5f6")
+    assert row == "| 2026-08-02T14:03 | fx-BloodySMD | v0.1 | 17 | a1b2c3d4e5f6 | | |\n"
+
+
+def test_sha256_file(tmp_path):
+    f = tmp_path / "x.zip"
+    f.write_bytes(b"hello")
+    # sha256("hello") = 2cf24dba5fb0a30e...; first 12 hex chars
+    assert fabhooks.sha256_file(f) == "2cf24dba5fb0"
+
+
+def test_append_fablog_creates_header_then_appends(tmp_path):
+    row1 = fabhooks.fablog_row("2026-08-02T14:03", "fx-BloodySMD", "v0.1", "17", "aaaaaaaaaaaa")
+    row2 = fabhooks.fablog_row("2026-08-02T15:00", "face-BloodySMD", "v0.2", "18", "bbbbbbbbbbbb")
+    fabhooks.append_fablog(tmp_path, row1)
+    fabhooks.append_fablog(tmp_path, row2)
+    text = (tmp_path / "FABLOG.md").read_text()
+    assert text.startswith("# Fab Log\n")
+    assert text.count("| Date |") == 1  # header written exactly once
+    assert row1 in text and row2 in text
+    assert text.index(row1.strip()) < text.index(row2.strip())
