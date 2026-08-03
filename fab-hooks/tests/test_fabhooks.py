@@ -256,7 +256,7 @@ def test_pre_fails_without_origin(tmp_path, capsys):
     repo = _init_repo(tmp_path / "repo")
     board = _board_file(repo)
     assert pre_generate.main(env=_env(repo, board)) == 1
-    assert "origin" in capsys.readouterr().out
+    assert "no 'origin' remote" in capsys.readouterr().out
 
 
 def test_pre_fails_on_bad_rev(tmp_path, capsys):
@@ -277,3 +277,13 @@ def test_pre_passes_when_all_good(tmp_path, capsys):
     board = _board_file(repo)
     assert pre_generate.main(env=_env(repo, board)) == 0
     assert "OK" in capsys.readouterr().out
+
+
+def test_pre_warns_but_passes_when_origin_unreachable(tmp_path, capsys):
+    repo = _init_repo(tmp_path / "repo")
+    _git(["remote", "add", "origin", str(tmp_path / "gone.git")], repo)
+    board = _board_file(repo)
+    assert pre_generate.main(env=_env(repo, board)) == 0
+    out = capsys.readouterr().out
+    assert "WARN" in out
+    assert "FAIL" not in out

@@ -18,7 +18,18 @@ def main(env=None) -> int:
     project_dir = env.get("JLCPCB_PROJECT_DIR")
     board_path = env.get("JLCPCB_BOARD_PATH")
     if not project_dir or not board_path:
-        print("FAIL: JLCPCB_* env not set -- run via kicad-jlcpcb-tools generation hooks")
+        missing = [
+            name
+            for name, val in [
+                ("JLCPCB_PROJECT_DIR", project_dir),
+                ("JLCPCB_BOARD_PATH", board_path),
+            ]
+            if not val
+        ]
+        print(
+            f"FAIL: {', '.join(missing)} not set -- "
+            "run via kicad-jlcpcb-tools generation hooks"
+        )
         return 1
 
     failures, warnings = [], []
@@ -33,12 +44,18 @@ def main(env=None) -> int:
     elif not fabhooks.origin_reachable(root):
         warnings.append("origin unreachable (offline?) -- commit/tag will be local-only")
 
-    rev = fabhooks.board_rev(Path(board_path))
-    if not fabhooks.is_valid_rev(rev):
-        failures.append(
-            f"board revision {rev!r} is not vN.M -- set it with set_board_rev.py "
-            "(or KiCad File > Board Setup) so the fab tag is meaningful"
-        )
+    rev = None
+    try:
+        rev = fabhooks.board_rev(Path(board_path))
+    except OSError as e:
+        failures.append(f"cannot read board file for revision check: {e}")
+    else:
+        if not fabhooks.is_valid_rev(rev):
+            what = "no board revision found" if rev is None else f"board revision {rev!r} is not vN.M"
+            failures.append(
+                f"{what} -- set it with set_board_rev.py "
+                "(or KiCad File > Board Setup) so the fab tag is meaningful"
+            )
 
     for w in warnings:
         print(f"WARN: {w}")
