@@ -2,7 +2,7 @@
 	(version 20250114)
 	(generator "eeschema")
 	(generator_version "9.0")
-	(uuid "c7179315-4b50-4301-9663-fd6aac9515bd")
+	(uuid "c556e1b7-f93a-4fb0-8141-9df2cef774de")
 	(paper "USLetter")
 	(title_block
 		(title "MN3102 drop-in clock - CD4047B")
@@ -467,7 +467,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "bc5c9860-2116-4d33-b212-ee5046403f4f")
+		(uuid "8ad9a53c-745f-4dc2-9aca-eaca4d230ec5")
 		(property "Reference" "J1"
 			(at 77.47 86.36 0)
 			(effects
@@ -513,7 +513,7 @@
 		)
 		(instances
 			(project "fx-MN3102DropIn"
-				(path "/c7179315-4b50-4301-9663-fd6aac9515bd"
+				(path "/c556e1b7-f93a-4fb0-8141-9df2cef774de"
 					(reference "J1")
 					(unit 1)
 				)
@@ -528,7 +528,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "c25211b3-4272-46c9-a8d6-064a2fa4cf91")
+		(uuid "88f37854-fe15-4c50-bf91-3859781753c6")
 		(property "Reference" "#FLG01"
 			(at 55.88 87.44 0)
 			(effects
@@ -576,7 +576,7 @@
 		)
 		(instances
 			(project "fx-MN3102DropIn"
-				(path "/c7179315-4b50-4301-9663-fd6aac9515bd"
+				(path "/c556e1b7-f93a-4fb0-8141-9df2cef774de"
 					(reference "#FLG01")
 					(unit 1)
 				)
@@ -591,7 +591,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "a0703605-05a9-4a5a-ad33-14c9fd391776")
+		(uuid "f65a8526-7ec8-41c5-857f-d35a5dc3e58f")
 		(property "Reference" "#FLG02"
 			(at 55.88 92.52 0)
 			(effects
@@ -639,7 +639,7 @@
 		)
 		(instances
 			(project "fx-MN3102DropIn"
-				(path "/c7179315-4b50-4301-9663-fd6aac9515bd"
+				(path "/c556e1b7-f93a-4fb0-8141-9df2cef774de"
 					(reference "#FLG02")
 					(unit 1)
 				)
@@ -654,7 +654,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "3645a269-1691-4c56-8749-4ba5d944f3cb")
+		(uuid "e713b5c1-81c9-4fc4-9933-f418d5f60ec3")
 	)
 	(label "VDD"
 		(at 66.04 91.44 180)
@@ -664,7 +664,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "8ec0fda9-8263-4142-9b57-6e9fa12ce173")
+		(uuid "6832bfac-5750-42e7-9c2b-40f4605ca821")
 	)
 	(wire
 		(pts
@@ -674,7 +674,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "692ee98e-f5b3-44f7-a1fb-04ddc17a97a0")
+		(uuid "3d3f9683-5c1e-4a5b-a49f-0f9231a872ab")
 	)
 	(label "CP1"
 		(at 66.04 93.98 180)
@@ -684,7 +684,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "7c4f2698-7bda-46f4-b82a-4bf677d1010f")
+		(uuid "eb622f96-acb6-4119-bef8-eb0b243701da")
 	)
 	(wire
 		(pts
@@ -694,7 +694,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "14440b39-c33b-4a86-886d-bfb7bddd9bf4")
+		(uuid "123e7d90-19e1-4db8-b5e0-8960db949e6b")
 	)
 	(label "GND"
 		(at 66.04 96.52 180)
@@ -704,7 +704,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "a61fed77-21f9-4541-82e3-8e2ebefff313")
+		(uuid "284cfa81-b23a-4d98-8fea-41483a02418d")
 	)
 	(wire
 		(pts
@@ -714,7 +714,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "b75ff736-6454-4284-9345-4d18a0ef7c98")
+		(uuid "c054d152-645c-46f7-b63b-e84e57633090")
 	)
 	(label "CP2"
 		(at 66.04 99.06 180)
@@ -724,7 +724,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "dd42dbbd-557e-4c2a-9910-fad6ce8a5625")
+		(uuid "b064eece-8db5-4ed4-a130-95f72643ef9a")
 	)
 	(wire
 		(pts
@@ -734,7 +734,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "846f04b6-604c-4d08-8c25-eb71f3f627bb")
+		(uuid "45fb595a-16df-4727-9311-4ec728143bc8")
 	)
 	(label "OX3"
 		(at 88.9 99.06 0)
@@ -744,7 +744,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "5c2fb122-8323-4260-b52b-ae9d4c96858c")
+		(uuid "075c9245-6826-400e-be0b-2f62029739cf")
 	)
 	(wire
 		(pts
@@ -754,7 +754,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "afbe660d-86f2-481b-848c-08496c45697f")
+		(uuid "7abe6557-baa0-4c78-bd97-6c8e43c9b40c")
 	)
 	(label "OX2"
 		(at 88.9 96.52 0)
@@ -764,7 +764,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "5eea12f3-9ec5-44fc-b17e-5901c9200333")
+		(uuid "0e3449fa-48d7-4a4b-8548-9d03c04d1ff3")
 	)
 	(wire
 		(pts
@@ -774,7 +774,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "da8d3910-ea50-4d44-bbe3-453efcfa06ab")
+		(uuid "3d3484f0-9fca-461e-beea-4a79bef5b2be")
 	)
 	(label "OX1"
 		(at 88.9 93.98 0)
@@ -784,7 +784,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "6aa06c53-8754-4034-b056-7db431172777")
+		(uuid "5f9b75dc-7d8b-47ea-b2c1-0a5035d00cf0")
 	)
 	(wire
 		(pts
@@ -794,7 +794,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "7f301cef-e243-4ee1-9d13-caa9999a40b8")
+		(uuid "0f56af34-59a1-4bff-9910-a2c6866b1146")
 	)
 	(label "VGG_OUT"
 		(at 88.9 91.44 0)
@@ -804,7 +804,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "55c3219e-e966-476d-a2c8-1a8847b09ae1")
+		(uuid "24319f80-e6df-418a-a59e-0d8c0dc5dfe3")
 	)
 	(sheet
 		(at 127 82.55)
@@ -821,7 +821,7 @@
 		(fill
 			(color 0 0 0 0.0000)
 		)
-		(uuid "eef4dae1-c24c-4d5f-937b-6697f15b36a4")
+		(uuid "95f8ed5c-c31d-4750-9045-e676dac2db76")
 		(property "Sheetname" "MN3102 drop-in (CD4047)"
 			(at 127 81.85 0)
 			(effects
@@ -848,7 +848,7 @@
 				)
 				(justify right)
 			)
-			(uuid "67612441-1ff3-4af0-bcae-1ddd24ee3bad")
+			(uuid "afd03a0d-f40c-4bca-a2fa-75066c1b6031")
 		)
 		(pin "CP1" output
 			(at 127 87.63 180)
@@ -858,7 +858,7 @@
 				)
 				(justify right)
 			)
-			(uuid "e11680f4-4b51-43ea-bdf4-2569adc55422")
+			(uuid "f9fbec27-9197-4ac3-adcd-dde54f67c32b")
 		)
 		(pin "GND" passive
 			(at 127 90.17 180)
@@ -868,7 +868,7 @@
 				)
 				(justify right)
 			)
-			(uuid "4566e207-eb57-45f1-89fe-340e874551f1")
+			(uuid "4b47fdf5-1a78-43d1-b2ff-b55100fe8beb")
 		)
 		(pin "CP2" output
 			(at 127 92.71 180)
@@ -878,7 +878,7 @@
 				)
 				(justify right)
 			)
-			(uuid "277ba0fc-8426-489b-b5e8-3584b80881b2")
+			(uuid "71df2abd-156b-4ef6-9974-2b58274ac41f")
 		)
 		(pin "OX3" passive
 			(at 127 95.25 180)
@@ -888,7 +888,7 @@
 				)
 				(justify right)
 			)
-			(uuid "4f13e05b-b784-4b9c-965e-7e0b55a61835")
+			(uuid "750b4a6f-690b-4ff3-8c3d-d7ce3c77c300")
 		)
 		(pin "OX2" passive
 			(at 127 97.79 180)
@@ -898,7 +898,7 @@
 				)
 				(justify right)
 			)
-			(uuid "71163f52-4507-40a6-9b62-91e5221a33ba")
+			(uuid "30fd9bd5-ef1e-4aeb-8374-ce2caf7c3cda")
 		)
 		(pin "OX1" passive
 			(at 127 100.33 180)
@@ -908,7 +908,7 @@
 				)
 				(justify right)
 			)
-			(uuid "1d8a1b5e-32a2-471e-bbb9-cec5cc98451b")
+			(uuid "aa1993a6-cc1e-43e7-9c56-13d232cf41de")
 		)
 		(pin "VGG_OUT" output
 			(at 127 102.87 180)
@@ -918,11 +918,11 @@
 				)
 				(justify right)
 			)
-			(uuid "06effeb4-5910-4287-887b-c22ff27406fc")
+			(uuid "a2d0dc4a-2923-41f1-b467-8ab8b902e049")
 		)
 		(instances
 			(project "fx-MN3102DropIn"
-				(path "/c7179315-4b50-4301-9663-fd6aac9515bd"
+				(path "/c556e1b7-f93a-4fb0-8141-9df2cef774de"
 					(page "2")
 				)
 			)
@@ -936,7 +936,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "aa92a243-8c33-4c78-8f87-f908fd7e34ea")
+		(uuid "ad719c79-5ce2-4878-a8e5-4b2677666919")
 	)
 	(label "VDD"
 		(at 121.92 85.09 180)
@@ -946,7 +946,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "f5f3d536-3d5c-4ee7-bf71-bd7e6b6f697b")
+		(uuid "56c8c7a2-ff51-43f4-a8fe-a2a4cf6ea9be")
 	)
 	(wire
 		(pts
@@ -956,7 +956,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "cd3c806f-c34e-4681-9a1b-3bce6009a5fa")
+		(uuid "84842c97-9062-46ec-8ca9-3eb86321978d")
 	)
 	(label "CP1"
 		(at 121.92 87.63 180)
@@ -966,7 +966,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "7275a8fd-2c6c-42ac-9cd5-8daa2114409c")
+		(uuid "83396375-0710-4f2d-9f5c-84f48737144d")
 	)
 	(wire
 		(pts
@@ -976,7 +976,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "e4f5d46b-9d4f-4e14-842f-fbce76aa930c")
+		(uuid "6f3600c8-e619-4fd1-bdef-72ad1189a5a8")
 	)
 	(label "GND"
 		(at 121.92 90.17 180)
@@ -986,7 +986,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "0fe9df8e-617f-4497-89ae-689ba44a880f")
+		(uuid "7d47b9fd-69b7-4a67-a862-aa74efc58b87")
 	)
 	(wire
 		(pts
@@ -996,7 +996,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "14aadc1b-a712-47a6-8d5a-5ff9d893efb7")
+		(uuid "429276dc-1ef6-42e3-981e-7bee37e3fee0")
 	)
 	(label "CP2"
 		(at 121.92 92.71 180)
@@ -1006,7 +1006,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "9c3df05a-1728-449b-bb57-9ed2b24a78c5")
+		(uuid "29547954-2ee7-401f-bdd3-350e852e4b53")
 	)
 	(wire
 		(pts
@@ -1016,7 +1016,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "6d294c51-82e7-4c62-be38-976e99f40153")
+		(uuid "56ac55a9-86fa-46b8-9bde-c6af9b21f0d3")
 	)
 	(label "OX3"
 		(at 121.92 95.25 180)
@@ -1026,7 +1026,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "3943a2cd-8a03-42c9-ab82-d8f42647551c")
+		(uuid "73795827-9ee8-4a42-b04f-792e43b2c0f9")
 	)
 	(wire
 		(pts
@@ -1036,7 +1036,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "2983c70a-d1ca-4218-bb42-d00449b78159")
+		(uuid "0eb36bdc-fa26-42c7-afd0-b5755ab53524")
 	)
 	(label "OX2"
 		(at 121.92 97.79 180)
@@ -1046,7 +1046,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "80c7a17c-c6d3-4f26-8b2f-4b4d0815a0c8")
+		(uuid "9b11068f-d43e-40a3-902e-54cfda3ee04b")
 	)
 	(wire
 		(pts
@@ -1056,7 +1056,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "bfc40a8a-4701-4aeb-9d30-4d18c25bca9f")
+		(uuid "88ccf4c2-d49e-4b94-a222-265cbc89b8fc")
 	)
 	(label "OX1"
 		(at 121.92 100.33 180)
@@ -1066,7 +1066,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "cb774bfc-3855-4fa9-89f2-9d9058a24701")
+		(uuid "c6d5acba-9492-43c3-af8b-0411c88e41ae")
 	)
 	(wire
 		(pts
@@ -1076,7 +1076,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "e45d5bb8-85ac-4dfc-a1b9-8260ac031297")
+		(uuid "68e1205f-5242-4929-8eac-525a8f59073f")
 	)
 	(label "VGG_OUT"
 		(at 121.92 102.87 180)
@@ -1086,7 +1086,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "315f3d02-c53b-46d8-97a3-06a2795e5fcd")
+		(uuid "2d6a40aa-ee23-43b9-8a6b-99e229c4bf2a")
 	)
 	(sheet_instances
 		(path "/"

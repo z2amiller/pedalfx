@@ -2,7 +2,7 @@
 	(version 20250114)
 	(generator "eeschema")
 	(generator_version "9.0")
-	(uuid "82be6f47-a006-4820-a20c-af003034823e")
+	(uuid "4ea8284a-8968-47b9-9419-91863d4e0b3d")
 	(paper "USLetter")
 	(lib_symbols
 		(symbol "4xxx:4047"
@@ -687,7 +687,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "ae77a57d-f05b-4700-b94a-11b341d6d17e")
+		(uuid "f3e48fa8-d69c-4310-8be4-9d2be99404e0")
 		(property "Reference" "U1"
 			(at 153.67 71.12 0)
 			(effects
@@ -704,7 +704,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm"
+		(property "Footprint" "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"
 			(at 149.86 100.33 0)
 			(effects
 				(font
@@ -722,7 +722,7 @@
 				(hide yes)
 			)
 		)
-		(property "Description" "CMOS monostable/astable multivibrator, wired astable as MN3102 replacement"
+		(property "Description" "TSSOP-14 rotated 90deg fits inside DIP-8 pin rows (adapter). For in-design JLC assembly use SOIC-14 CD4047BM96 LCSC C46538 instead."
 			(at 149.86 100.33 0)
 			(effects
 				(font
@@ -731,7 +731,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C46538"
+		(property "LCSC" "C2652491"
 			(at 149.86 100.33 0)
 			(effects
 				(font
@@ -742,7 +742,7 @@
 		)
 		(instances
 			(project "fx-MN3102DropIn"
-				(path "/c7179315-4b50-4301-9663-fd6aac9515bd/eef4dae1-c24c-4d5f-937b-6697f15b36a4"
+				(path "/c556e1b7-f93a-4fb0-8141-9df2cef774de/95f8ed5c-c31d-4750-9045-e676dac2db76"
 					(reference "U1")
 					(unit 1)
 				)
@@ -757,7 +757,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "5d9bde80-aa01-4c82-8e06-19d5ee29a310")
+		(uuid "398da868-7feb-486c-9f09-62d9dc3b3cd7")
 		(property "Reference" "R1"
 			(at 184.15 83.82 0)
 			(effects
@@ -812,7 +812,7 @@
 		)
 		(instances
 			(project "fx-MN3102DropIn"
-				(path "/c7179315-4b50-4301-9663-fd6aac9515bd/eef4dae1-c24c-4d5f-937b-6697f15b36a4"
+				(path "/c556e1b7-f93a-4fb0-8141-9df2cef774de/95f8ed5c-c31d-4750-9045-e676dac2db76"
 					(reference "R1")
 					(unit 1)
 				)
@@ -827,7 +827,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "092ddef6-e34f-4f32-ba0a-7a6428363599")
+		(uuid "251e391e-b1cf-4edf-85ee-6498f0cf316a")
 		(property "Reference" "R2"
 			(at 184.15 93.98 0)
 			(effects
@@ -882,7 +882,7 @@
 		)
 		(instances
 			(project "fx-MN3102DropIn"
-				(path "/c7179315-4b50-4301-9663-fd6aac9515bd/eef4dae1-c24c-4d5f-937b-6697f15b36a4"
+				(path "/c556e1b7-f93a-4fb0-8141-9df2cef774de/95f8ed5c-c31d-4750-9045-e676dac2db76"
 					(reference "R2")
 					(unit 1)
 				)
@@ -897,7 +897,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "da69514e-ceae-40a9-b95c-ec6450efff0a")
+		(uuid "3d6b822e-9217-4cd0-b50b-10af18d8ba81")
 		(property "Reference" "C1"
 			(at 212.09 91.44 0)
 			(effects
@@ -952,7 +952,7 @@
 		)
 		(instances
 			(project "fx-MN3102DropIn"
-				(path "/c7179315-4b50-4301-9663-fd6aac9515bd/eef4dae1-c24c-4d5f-937b-6697f15b36a4"
+				(path "/c556e1b7-f93a-4fb0-8141-9df2cef774de/95f8ed5c-c31d-4750-9045-e676dac2db76"
 					(reference "C1")
 					(unit 1)
 				)
@@ -967,7 +967,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(dnp no)
-		(uuid "89011fe3-01a7-41ae-a4c4-25ef67b9c70a")
+		(uuid "b1e225ff-1621-454a-8402-481bfe411984")
 		(property "Reference" "C2"
 			(at 191.77 91.44 0)
 			(effects
@@ -1022,7 +1022,7 @@
 		)
 		(instances
 			(project "fx-MN3102DropIn"
-				(path "/c7179315-4b50-4301-9663-fd6aac9515bd/eef4dae1-c24c-4d5f-937b-6697f15b36a4"
+				(path "/c556e1b7-f93a-4fb0-8141-9df2cef774de/95f8ed5c-c31d-4750-9045-e676dac2db76"
 					(reference "C2")
 					(unit 1)
 				)
@@ -1037,7 +1037,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "1139b610-e55b-4eb0-8c4e-52a5d8d257ae")
+		(uuid "ef96c5fe-8057-4873-b23d-545ea28148d6")
 	)
 	(wire
 		(pts
@@ -1047,7 +1047,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "8e11c3bd-bf17-46a4-8116-e05c946f4031")
+		(uuid "bab36ae1-9b87-4c00-a446-676a70a18af9")
 	)
 	(wire
 		(pts
@@ -1057,7 +1057,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "b896ed37-597a-4808-b8f0-0cd106d9d8bd")
+		(uuid "b10d44c6-4c1c-48ea-b3eb-11544528df43")
 	)
 	(wire
 		(pts
@@ -1067,19 +1067,19 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "b2eb9b50-2fb2-4657-895a-b9da57daaf80")
+		(uuid "2c5241ff-ebfe-404b-9887-12c40f33281d")
 	)
 	(junction
 		(at 130.81 82.55)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "3a517c3f-dd4b-402c-8a6f-d980bd357464")
+		(uuid "feab1beb-9379-4bce-9f84-15a5ce30900e")
 	)
 	(junction
 		(at 130.81 85.09)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "d2d01af2-069f-4b79-9a4a-212c0637c3e7")
+		(uuid "5ad64fce-1295-4141-95f2-be4c27f49b81")
 	)
 	(label "VDD"
 		(at 127 82.55 180)
@@ -1089,7 +1089,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "44e1505c-2b1f-407c-a48d-e80f3aaaae13")
+		(uuid "d95f6268-8b34-4829-8606-fe36dbf54bb1")
 	)
 	(wire
 		(pts
@@ -1099,7 +1099,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "df1861b1-8503-451f-b79a-70a8e94d98ad")
+		(uuid "a3b71256-ef3f-4ab6-b617-6606ae25ceb0")
 	)
 	(wire
 		(pts
@@ -1109,7 +1109,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "ca495bed-8513-4f30-aa9f-62c0144c0940")
+		(uuid "929e2cc7-bc9a-4d7c-ba4d-9f6f0427532f")
 	)
 	(wire
 		(pts
@@ -1119,7 +1119,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "5bf5fcb7-cb5e-4805-af5c-10e3fe447f1d")
+		(uuid "65e17dee-ce5d-46ff-8273-a1a94199b962")
 	)
 	(wire
 		(pts
@@ -1129,19 +1129,19 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "de577382-fbda-4535-91ad-e335c7aba058")
+		(uuid "83572974-d805-46f9-be26-b33abfa64bf4")
 	)
 	(junction
 		(at 130.81 92.71)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "e6aa4858-7210-4387-a27a-7940048d6795")
+		(uuid "f5509000-d4b7-477e-8196-065488e51baf")
 	)
 	(junction
 		(at 130.81 97.79)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "28239669-c41d-4e90-8cef-bcba0d26c2a5")
+		(uuid "b56f4f1a-be64-468e-843c-be86b37ed2ba")
 	)
 	(label "GND"
 		(at 127 92.71 180)
@@ -1151,7 +1151,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "aadbae2a-a2d3-4f5a-b7cb-a734925ab334")
+		(uuid "8c3e6c8b-60bb-499f-9ec4-bb2da40862c6")
 	)
 	(wire
 		(pts
@@ -1161,7 +1161,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "7d87aad8-f2fb-436d-8880-288d9a2369c9")
+		(uuid "c3cb978c-479b-48dd-a2df-bfa841a0ffcc")
 	)
 	(hierarchical_label "OX2"
 		(shape passive)
@@ -1172,7 +1172,7 @@
 			)
 			(justify right)
 		)
-		(uuid "45c0f52f-8605-4a6d-8cda-66efe4a06a41")
+		(uuid "c7d779fc-7793-4eb8-8187-ea99c633e9d4")
 	)
 	(wire
 		(pts
@@ -1182,7 +1182,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "f8ebced7-93b6-4577-9af8-ec04259612c5")
+		(uuid "61a0aecc-c72b-4d95-aeac-cc2c0ee5f253")
 	)
 	(hierarchical_label "OX3"
 		(shape passive)
@@ -1193,7 +1193,7 @@
 			)
 			(justify right)
 		)
-		(uuid "2060e5d7-fe13-45fc-8be2-a121da12e816")
+		(uuid "76d4604e-163a-45cb-931b-503599f6e49c")
 	)
 	(wire
 		(pts
@@ -1203,7 +1203,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "0a22c323-58ff-41a5-9aac-9c167233f6ab")
+		(uuid "ad2feaa5-70e9-40db-b4f0-52672bf706c1")
 	)
 	(hierarchical_label "OX1"
 		(shape passive)
@@ -1214,7 +1214,7 @@
 			)
 			(justify right)
 		)
-		(uuid "5c5d2e21-c2d9-47c5-a694-f7419d2c3a90")
+		(uuid "1d9b62ab-2a77-423b-afbd-c56134cfb463")
 	)
 	(wire
 		(pts
@@ -1224,7 +1224,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "17f0f619-5a6a-415c-813f-b6f0c6f484e4")
+		(uuid "9d86e16d-8e89-4f5c-893a-700b27bc9014")
 	)
 	(hierarchical_label "CP1"
 		(shape output)
@@ -1235,7 +1235,7 @@
 			)
 			(justify left)
 		)
-		(uuid "6a40f47d-1e42-40b5-87b1-b785aa303956")
+		(uuid "494301eb-8bf6-46ce-ad88-721ba27ab02d")
 	)
 	(wire
 		(pts
@@ -1245,7 +1245,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "23d723c8-c487-4578-bdb3-12980096337c")
+		(uuid "f2ece18b-5cff-4451-95e1-e41547e71208")
 	)
 	(hierarchical_label "CP2"
 		(shape output)
@@ -1256,11 +1256,11 @@
 			)
 			(justify left)
 		)
-		(uuid "32dfb9cc-83b5-4135-afdf-644a282030ef")
+		(uuid "799ae0ec-69ab-4918-a1ea-65e19cf42b9c")
 	)
 	(no_connect
 		(at 165.1 82.55)
-		(uuid "fa310440-39c2-43d7-b6f8-0757e56180f8")
+		(uuid "50e35b76-207f-47a5-b950-9261b4a7f325")
 	)
 	(wire
 		(pts
@@ -1270,7 +1270,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "0d4d6119-70ad-4c4b-a599-51523c983626")
+		(uuid "4f7346be-dd38-442c-a5ed-f47b3d554a42")
 	)
 	(hierarchical_label "VDD"
 		(shape passive)
@@ -1281,7 +1281,7 @@
 			)
 			(justify left)
 		)
-		(uuid "65b420dd-359a-4f1f-9486-dd3d113ac22a")
+		(uuid "a9d97036-014e-4cd3-9ab9-6a22fb6c0bf4")
 	)
 	(wire
 		(pts
@@ -1291,7 +1291,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "f75b4e6f-cbe5-42e3-bed1-d9e2899fad66")
+		(uuid "36fb059e-db89-4951-b3ac-b03792bb9eed")
 	)
 	(hierarchical_label "GND"
 		(shape passive)
@@ -1302,7 +1302,7 @@
 			)
 			(justify right)
 		)
-		(uuid "364fb9e8-05ce-45b6-a63f-d5d619c8f5d4")
+		(uuid "aca80509-49e6-492c-82ed-c3c6089af6e6")
 	)
 	(wire
 		(pts
@@ -1312,7 +1312,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "60c98243-f905-485a-91a0-6db49efa10b6")
+		(uuid "c2725aa7-afbe-43eb-842c-7e85b404371f")
 	)
 	(label "VDD"
 		(at 189.23 82.55 90)
@@ -1322,7 +1322,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "8091f70d-77ce-4059-9057-be89435f4680")
+		(uuid "c1514c79-023d-49cf-a3d6-f42def291380")
 	)
 	(wire
 		(pts
@@ -1332,13 +1332,13 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "bc5142b5-ea58-4706-a56d-dc680ed3dff6")
+		(uuid "3dd654d2-5898-4e43-a24a-1511c1178489")
 	)
 	(junction
 		(at 189.23 92.71)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "a48d5291-edf4-49ce-8d26-819865684177")
+		(uuid "6d3929d7-cb67-4056-b2b5-2dfee4fe847c")
 	)
 	(wire
 		(pts
@@ -1348,7 +1348,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "2e270112-952c-4e6b-9fc2-b6e520cb08d1")
+		(uuid "b7ab2782-aad2-4030-87a9-a15d9d151984")
 	)
 	(label "GND"
 		(at 189.23 102.87 270)
@@ -1358,7 +1358,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "fd80cae5-a961-4519-aff3-da605ccb172a")
+		(uuid "ceea671f-2bb2-4df1-8509-968ec8044aa3")
 	)
 	(wire
 		(pts
@@ -1368,13 +1368,13 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "6609ff8a-81fa-4091-a7fe-6d44d60b483d")
+		(uuid "83f4f242-fbb0-4bfc-9750-392bb0beb919")
 	)
 	(junction
 		(at 196.85 92.71)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "02cf00d4-495a-4713-a73b-ded3b258fc0d")
+		(uuid "614b8446-d8b7-42e9-b34e-befaf6eae149")
 	)
 	(hierarchical_label "VGG_OUT"
 		(shape output)
@@ -1385,7 +1385,7 @@
 			)
 			(justify left)
 		)
-		(uuid "f078dfb7-8c6b-4b3e-81ce-e62bfa7d24f5")
+		(uuid "f686ad49-8cb4-4657-89e0-c317500185e7")
 	)
 	(wire
 		(pts
@@ -1395,7 +1395,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "0a1c88ea-e195-4676-814a-09e7feb8e442")
+		(uuid "4c0cc9e2-bad0-470e-b554-f159b01487ce")
 	)
 	(label "GND"
 		(at 196.85 100.33 270)
@@ -1405,7 +1405,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "c34459e1-ffb2-447b-a7fb-a9dec1dc931f")
+		(uuid "7fb012ac-d530-4d56-b273-393d59e6fcbd")
 	)
 	(wire
 		(pts
@@ -1415,7 +1415,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "ed0219ff-09f8-4408-aa1b-232a76aa8fd1")
+		(uuid "13c98a9d-8028-4bb6-9e6f-677e6b6de729")
 	)
 	(label "VDD"
 		(at 217.17 90.17 90)
@@ -1425,7 +1425,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "81576732-96b9-47f1-b6fc-c76fb32a967b")
+		(uuid "f049a508-aeea-4a5c-8e51-e87dc385803e")
 	)
 	(wire
 		(pts
@@ -1435,7 +1435,7 @@
 			(width 0)
 			(type default)
 		)
-		(uuid "1c45d692-c825-4610-9875-baaf00df8fd8")
+		(uuid "13d94f25-0c9c-404a-9324-8b6462ceadda")
 	)
 	(label "GND"
 		(at 217.17 100.33 270)
@@ -1445,7 +1445,7 @@
 			)
 			(justify right bottom)
 		)
-		(uuid "d186a6b3-e293-4100-945d-8bac9e071842")
+		(uuid "ee7a350c-b425-44c4-a004-c67e1df2ecc3")
 	)
 	(text "CD4047B astable = drop-in for MN3102 (same pin roles as MN3102 DIP-8):\nOX1 = RC common (4047 p3), OX2 = R-drive (p2), OX3 = C-drive (p1)\nSelf-osc: R from OX2 to OX1, C from OX3 to OX1;  f_CP = 1/(4.4 R C), Q/~Q 50% duty\nCurrent-driven hosts (Julia/Caesar): OX2 open, C OX3-OX1, LFO current into OX1\nVGG_OUT = VDD*15/16 (~14/15 VDD) for BBD VGG pin (MN3207 p4)"
 		(exclude_from_sim no)
@@ -1456,7 +1456,7 @@
 			)
 			(justify left bottom)
 		)
-		(uuid "eda32f1c-0e75-45d5-a6d7-855b724352c3")
+		(uuid "e0200fb6-2b1d-48df-882e-3773109d1be1")
 	)
 	(embedded_fonts no)
 )

@@ -29,18 +29,39 @@ unchanged. f_CP = 1/(4.4·R·C) at 50% duty.
 
 The root sheet (`fx-MN3102DropIn.kicad_sch`) adds J1, a DIP-8 machined-pin
 header footprint, so the same block can be laid out as a tiny board that plugs
-into an existing MN3102 socket. SOIC-14 fits between the 7.62mm pin rows;
-passives go on the underside.
+into an existing MN3102 socket.
+
+### Package fit inside the DIP-8 outline
+
+The DIP-8 pad ring's inner edge is 3.01mm from the board centerline (pads Ø1.6
+on 7.62mm rows). Measured pad-field extents (KiCad footprints):
+
+| Package                                  | Pad field half-extent        | Fits between rows?                   |
+| ---------------------------------------- | ---------------------------- | ------------------------------------ |
+| SOIC-14 (leads across)                   | 3.45mm                       | **No — overlaps DIP pads by 0.44mm** |
+| TSSOP-14 rotated 90° (leads along board) | 2.15mm across / 3.60mm along | **Yes, ≥0.5mm clear**                |
+
+So the adapter uses **TSSOP-14 rotated 90°** on top, passives on the underside
+between the pin rows. Fallback option if TSSOP sourcing is a problem: stretch
+the board to ~15mm and let a SOIC-14 overhang past the socket ends
+(host-dependent — needs clearance beyond the socket).
 
 ## BOM (JLC, snapshot 2026-08)
 
-| Ref | Value      | Package | LCSC   | Tier     |
-| --- | ---------- | ------- | ------ | -------- |
-| U1  | CD4047BM96 | SOIC-14 | C46538 | Extended |
-| R1  | 1k         | 0603    | C21190 | Basic    |
-| R2  | 15k        | 0603    | C22809 | Basic    |
-| C1  | 100n       | 0603    | C14663 | Basic    |
-| C2  | 1u         | 0805    | C28323 | Basic    |
+| Ref | Value                | Package  | LCSC     | Tier     |
+| --- | -------------------- | -------- | -------- | -------- |
+| U1  | CD4047BPWR (adapter) | TSSOP-14 | C2652491 | Extended |
+| R1  | 1k                   | 0603     | C21190   | Basic    |
+| R2  | 15k                  | 0603     | C22809   | Basic    |
+| C1  | 100n                 | 0603     | C14663   | Basic    |
+| C2  | 1u                   | 0805     | C28323   | Basic    |
+
+**U1 sourcing reality** (live-checked 2026-08-08): the TSSOP-14 CD4047BPWR is
+out of stock at JLC/LCSC (global-sourcing/notify-me only), but Mouser/DigiKey
+stock it (~$0.30-0.60). Adapter plan: have JLC assemble the four Basic passives,
+hand-stencil the TSSOP at home. For **in-design use** (full pedal board, no size
+constraint), swap U1's footprint to SOIC-14 and use **CD4047BM96, LCSC C46538**
+(35k+ stock) for normal JLC assembly.
 
 Do **not** substitute 74HC4047 (6V max). CD4047B/HEF4047B only. Timing cap in
 the host must be C0G/NP0.
