@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "filename": "fx-MN3102DropIn.kicad_pro",
+    "version": 3
+  },
+  "schematic": {
+    "drawing": {
+      "default_font": "KiCad Font"
+    },
+    "legacy_lib_dir": "",
+    "legacy_lib_list": []
+  },
+  "sheets": [
+    [
+      "c7179315-4b50-4301-9663-fd6aac9515bd",
+      "Root"
+    ],
+    [
+      "eef4dae1-c24c-4d5f-937b-6697f15b36a4",
+      "MN3102 drop-in (CD4047)"
+    ]
+  ],
+  "text_variables": {}
+}
