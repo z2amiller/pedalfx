@@ -976,7 +976,7 @@
 				)
 			)
 		)
-		(property "Value" "1u"
+		(property "Value" "100n"
 			(at 191.77 93.98 0)
 			(effects
 				(font
@@ -984,7 +984,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 196.85 95.25 0)
 			(effects
 				(font
@@ -1011,7 +1011,7 @@
 				(hide yes)
 			)
 		)
-		(property "LCSC" "C28323"
+		(property "LCSC" "C14663"
 			(at 196.85 95.25 0)
 			(effects
 				(font

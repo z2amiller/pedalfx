@@ -41,10 +41,26 @@ on 7.62mm rows). Measured pad-field extents (KiCad footprints):
 | SOIC-14 (leads across)                   | 3.45mm                       | **No — overlaps DIP pads by 0.44mm** |
 | TSSOP-14 rotated 90° (leads along board) | 2.15mm across / 3.60mm along | **Yes, ≥0.5mm clear**                |
 
-So the adapter uses **TSSOP-14 rotated 90°** on top, passives on the underside
-between the pin rows. Fallback option if TSSOP sourcing is a problem: stretch
-the board to ~15mm and let a SOIC-14 overhang past the socket ends
-(host-dependent — needs clearance beyond the socket).
+**Recommended construction: everything on top, bare bottom.** Board ~12.7mm
+long: TSSOP-14 rotated 90° in the middle between the pin rows, two 0603s on each
+end tongue (~2.5mm overhang past the socket ends). Bare bottom = the board seats
+flush on the socket, no standoff/height concerns at all.
+
+Overhang clearance, verified against fx-PizzaPizza: nearest on-axis parts are
+R9/R11 (0603, ~0.8mm tall) 3.4mm past one socket end — the overhang flies ~3.5mm
+above them at socket-top height; the other end is clear for 8mm+. In general
+only tall neighbors matter (electrolytics, box film caps, adjacent socketed ICs)
+— check per host, especially through-hole builds.
+
+Alternate (zero overhang): passives on the underside between the pin rows — then
+use collared machined-pin strips (≥1.5mm standoff) so back-side parts (≤0.9mm
+with solder) clear the socket face.
+
+VGG cap note: C2 is optional insurance, not functional — the BBD's VGG pin draws
+no DC current and many hosts already have a cap on that net (PizzaPizza: C21
+22µF). 100nF is plenty (filter corner ~1.7kHz vs 50-200kHz clock); DNP it if
+space is tight. Lowest-profile alternates, all Basic tier 0402: 1k C11702, 15k
+C25756, 100nF 50V C307331 (~0.55mm tall).
 
 ## BOM (JLC, snapshot 2026-08)
 
@@ -54,7 +70,7 @@ the board to ~15mm and let a SOIC-14 overhang past the socket ends
 | R1  | 1k                   | 0603     | C21190   | Basic    |
 | R2  | 15k                  | 0603     | C22809   | Basic    |
 | C1  | 100n                 | 0603     | C14663   | Basic    |
-| C2  | 1u                   | 0805     | C28323   | Basic    |
+| C2  | 100n (optional)      | 0603     | C14663   | Basic    |
 
 **U1 sourcing reality** (live-checked 2026-08-08): the TSSOP-14 CD4047BPWR is
 out of stock at JLC/LCSC (global-sourcing/notify-me only), but Mouser/DigiKey
