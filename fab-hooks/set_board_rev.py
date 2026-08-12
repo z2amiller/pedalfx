@@ -20,7 +20,7 @@ def set_rev(board_path: Path, rev: str) -> str:
     """Set title-block rev; returns the previous rev ('' if none). Raises on problems."""
     board_path = Path(board_path)
     if not fabhooks.is_valid_rev(rev):
-        raise ValueError(f"revision {rev!r} must match vN.M (e.g. v0.1)")
+        raise ValueError(f"revision {rev!r} must match [prefix]N.M (e.g. v0.1, 0.3, psu-1.0)")
     lock = board_path.parent / f"~{board_path.name}.lck"
     if lock.exists():
         raise RuntimeError(f"KiCad lock file present ({lock.name}) -- close KiCad first")

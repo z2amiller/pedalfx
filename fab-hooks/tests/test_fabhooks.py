@@ -29,7 +29,7 @@ BOARD_WITH_REV = """(kicad_pcb (version 20240108) (generator "pcbnew")
 )
 """
 
-BOARD_TEMPLATE_REV = BOARD_WITH_REV.replace('(rev "v0.3")', '(rev "1.0")')
+BOARD_UNSET_REV = BOARD_WITH_REV.replace('(rev "v0.3")', '(rev "")')
 BOARD_NO_TITLE_BLOCK = """(kicad_pcb (version 20240108) (generator "pcbnew")
 \t(gr_text "v0.7"
 \t\t(at 1 1)
@@ -93,9 +93,9 @@ def test_board_rev_title_block_wins_over_silk(tmp_path):
     assert fabhooks.board_rev(_write(tmp_path, BOARD_WITH_REV)) == "v0.3"
 
 
-def test_board_rev_template_junk_falls_back_to_silk(tmp_path):
-    # "1.0" fails validation, so the silk v-text is used
-    assert fabhooks.board_rev(_write(tmp_path, BOARD_TEMPLATE_REV)) == "v9.9"
+def test_board_rev_unset_falls_back_to_silk(tmp_path):
+    # an empty rev fails validation, so the silk rev-text is used
+    assert fabhooks.board_rev(_write(tmp_path, BOARD_UNSET_REV)) == "v9.9"
 
 
 def test_board_rev_no_title_block_uses_silk(tmp_path):
@@ -129,10 +129,19 @@ def test_board_rev_silk_matches_knockout_text(tmp_path):
 
 
 def test_is_valid_rev():
+    # optional alpha prefix (letters/dashes, starts with a letter) + N.M
     assert fabhooks.is_valid_rev("v0.1")
     assert fabhooks.is_valid_rev("v12.3")
-    assert not fabhooks.is_valid_rev("1.0")
+    assert fabhooks.is_valid_rev("1.0")
+    assert fabhooks.is_valid_rev("0.3")
+    assert fabhooks.is_valid_rev("psu1.0")
+    assert fabhooks.is_valid_rev("util-1.2")
+    assert fabhooks.is_valid_rev("power-supply-2.0")
     assert not fabhooks.is_valid_rev("v1")
+    assert not fabhooks.is_valid_rev("1")
+    assert not fabhooks.is_valid_rev("1.0.1")
+    assert not fabhooks.is_valid_rev("-1.0")
+    assert not fabhooks.is_valid_rev("SET-ME")
     assert not fabhooks.is_valid_rev("")
     assert not fabhooks.is_valid_rev(None)
     assert not fabhooks.is_valid_rev("v1.0\n")
@@ -274,7 +283,7 @@ def test_pre_fails_on_bad_rev(tmp_path, capsys):
     bare = tmp_path / "o.git"
     subprocess.run(["git", "init", "-q", "--bare", str(bare)], check=True, env=HERMETIC_GIT_ENV)
     _git(["remote", "add", "origin", str(bare)], repo)
-    board = _board_file(repo, BOARD_TEMPLATE_REV.replace('(gr_text "v9.9"', '(gr_text "x"'))
+    board = _board_file(repo, BOARD_UNSET_REV.replace('(gr_text "v9.9"', '(gr_text "x"'))
     assert pre_generate.main(env=_env(repo, board)) == 1
     assert "revision" in capsys.readouterr().out
 
@@ -425,9 +434,9 @@ def test_post_fails_on_empty_generation_count(tmp_path, capsys):
 
 def test_set_rev_replaces_existing(tmp_path):
     board = tmp_path / "b.kicad_pcb"
-    board.write_text(BOARD_TEMPLATE_REV, encoding="utf-8")
+    board.write_text(BOARD_WITH_REV, encoding="utf-8")
     old = set_board_rev.set_rev(board, "v0.1")
-    assert old == "1.0"
+    assert old == "v0.3"
     assert fabhooks.title_block_rev(board.read_text()) == "v0.1"
 
 
@@ -454,7 +463,7 @@ def test_set_rev_rejects_invalid_version(tmp_path):
     board = tmp_path / "b.kicad_pcb"
     board.write_text(BOARD_WITH_REV, encoding="utf-8")
     try:
-        set_board_rev.set_rev(board, "0.1")
+        set_board_rev.set_rev(board, "v1")  # no minor component -> invalid
         assert False, "expected ValueError"
     except ValueError:
         pass
@@ -474,3 +483,13 @@ def test_set_rev_handles_noncanonical_spacing(tmp_path):
 def test_set_rev_cli_reports_missing_file(tmp_path, capsys):
     assert set_board_rev.main([str(tmp_path / "nope.kicad_pcb"), "v0.1"]) == 1
     assert "FAIL" in capsys.readouterr().out
+
+
+def test_board_rev_accepts_bare_numeric_title_block(tmp_path):
+    board = _write(tmp_path, BOARD_WITH_REV.replace('(rev "v0.3")', '(rev "1.0")'))
+    assert fabhooks.board_rev(board) == "1.0"
+
+
+def test_silk_fallback_accepts_prefixed_rev(tmp_path):
+    board = _write(tmp_path, BOARD_NO_TITLE_BLOCK.replace('"v0.7"', '"psu0.7"'))
+    assert fabhooks.board_rev(board) == "psu0.7"
