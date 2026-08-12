@@ -11,8 +11,12 @@ import re
 import subprocess
 from pathlib import Path
 
-REV_RE = re.compile(r"^v\d+\.\d+$")
-_GR_TEXT_REV_RE = re.compile(r'\(gr_text\s+"(v\d+\.\d+)"')
+# Revision grammar: optional alpha prefix (letters/dashes, starting with a
+# letter) followed by N.M -- "v0.1", "0.3", "psu1.0", "util-1.2" all valid.
+# Characters are restricted to keep revs safe inside git tag names and
+# FABLOG markdown cells.
+REV_RE = re.compile(r"^(?:[A-Za-z][A-Za-z-]*)?\d+\.\d+$")
+_GR_TEXT_REV_RE = re.compile(r'\(gr_text\s+"((?:[A-Za-z][A-Za-z-]*)?\d+\.\d+)"')
 _TB_REV_RE = re.compile(r'\(rev\s+"([^"]*)"\)')
 
 
@@ -53,7 +57,7 @@ def title_block_rev(board_text: str) -> str | None:
 
 
 def silk_rev(board_text: str) -> str | None:
-    """First gr_text on a silkscreen layer matching vN.M, or None."""
+    """First gr_text on a silkscreen layer matching the rev grammar, or None."""
     for m in _GR_TEXT_REV_RE.finditer(board_text):
         block = balanced_block(board_text, m.start())
         if re.search(r'\(layer\s+"[^"]*SilkS[^"]*"', block):
@@ -66,7 +70,7 @@ def is_valid_rev(rev: str | None) -> bool:
 
 
 def board_rev(board_path: Path | str) -> str | None:
-    """Board revision: valid title-block rev first, silk v-text fallback, else None."""
+    """Board revision: valid title-block rev first, silk rev-text fallback, else None."""
     text = Path(board_path).read_text(encoding="utf-8")
     tb = title_block_rev(text)
     if is_valid_rev(tb):

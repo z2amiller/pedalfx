@@ -38,7 +38,7 @@ def main(argv=None, env=None) -> int:
     board = board_path.stem
     rev = fabhooks.board_rev(board_path)
     if not fabhooks.is_valid_rev(rev):
-        print(f"FAIL: board revision {rev!r} is not vN.M -- fix title block rev and re-generate")
+        print(f"FAIL: board revision {rev!r} is not [prefix]N.M (e.g. v0.1, 0.3, psu-1.0) -- fix title block rev and re-generate")
         return 1
     root = fabhooks.repo_root(project_dir)
     if root is None:
