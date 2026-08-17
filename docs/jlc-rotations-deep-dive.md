@@ -1,11 +1,11 @@
 # JLCPCB rotations: the rabbit hole
 
-*Companion to [Why are my parts rotated wrong at JLCPCB?](jlc-rotations). That
-page is the short version. This one is the working notes: how the question was
-investigated, what turned out to be wrong, what the data actually looks like,
-and the numbers from crawling the catalog. It is condensed from a series of
-scoping/checkpoint documents written during the investigation (April–June 2026),
-lightly edited; where something is a guess it says so.*
+*Companion to [Why are my parts rotated wrong at JLCPCB?](jlc-rotations.html).
+That page is the short version. This one is the working notes: how the question
+was investigated, what turned out to be wrong, what the data actually looks
+like, and the numbers from crawling the catalog. It is condensed from a series
+of scoping/checkpoint documents written during the investigation (April–June
+2026), lightly edited; where something is a guess it says so.*
 
 ## 1. How it started
 

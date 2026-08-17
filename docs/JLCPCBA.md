@@ -183,7 +183,7 @@ board! JLC gives you a UI that lets you fix component rotation issues. The Bouni
 tools actually have a rotation manager built in as well that you can use to more
 permanently fix the rotations so you don't need to fix them in the JLC UI after
 you upload. If you want to know *why* this happens (and why nobody can fully fix
-it), see [Why are my parts rotated wrong at JLCPCB?](jlc-rotations).
+it), see [Why are my parts rotated wrong at JLCPCB?](jlc-rotations.html).
 
 ## More Price Hacking
 

@@ -7,7 +7,7 @@ and once as
 — and my long answer to the second one got eaten by AutoModerator for containing
 a link to a banned domain. So here's the durable version. Living copy with
 deeper links lives at
-[z2amiller.github.io/pedalfx/jlc-rotations](https://z2amiller.github.io/pedalfx/jlc-rotations).*
+[z2amiller.github.io/pedalfx/docs/jlc-rotations.html](https://z2amiller.github.io/pedalfx/docs/jlc-rotations.html).*
 
 Disclaimer: I'm a hobbyist who went unreasonably far down this rabbit hole, not
 a JLC employee. Trust but verify.
@@ -177,7 +177,7 @@ are not identical when you change footprints.
   distribution is a slam-dunk L: **the top 350 footprints (R0603, R0805, SOT-23,
   SOIC-8…) cover half of all parts, while 73 % of footprints are used by exactly
   one part** — connectors and modules with the footprint named after the part
-  ([chart](https://z2amiller.github.io/pedalfx/jlc-rotations-deep-dive#7-crawling-the-catalog-what-the-numbers-look-like)).
+  ([chart](https://z2amiller.github.io/pedalfx/docs/jlc-rotations-deep-dive.html#7-crawling-the-catalog-what-the-numbers-look-like)).
 - Roughly half of parts have a footprint name with a parseable orientation
   token; a geometric fallback (where's pad 1 relative to the centroid) covers
   most of the rest; ~1% are hopeless.
@@ -210,7 +210,7 @@ are not identical when you change footprints.
 
 ## Further reading
 
-- [The rabbit hole: how I worked this out](https://z2amiller.github.io/pedalfx/jlc-rotations-deep-dive)
+- [The rabbit hole: how I worked this out](https://z2amiller.github.io/pedalfx/docs/jlc-rotations-deep-dive.html)
   — EIA-481 in detail, the naming rule, the API, the crawl, and the things that
   turned out to be wrong.
 - [EasyEDA Footprint Naming Rule Reference](https://docs.easyeda.com/en/PCBLib/PCBLib-Naming-Rule/index.html)
@@ -221,6 +221,6 @@ are not identical when you change footprints.
   [minimum spacing for SMD components](https://jlcpcb.com/help/article/minimum-spacing-for-smd-components)
   — the other thing the preview will complain about.
 - My
-  [JLCPCBA getting-started notes](https://z2amiller.github.io/pedalfx/JLCPCBA)
+  [JLCPCBA getting-started notes](https://z2amiller.github.io/pedalfx/docs/JLCPCBA.html)
   and
-  [pitfalls and tips](https://z2amiller.github.io/pedalfx/pitfalls-and-tips).
+  [pitfalls and tips](https://z2amiller.github.io/pedalfx/docs/pitfalls-and-tips.html).
