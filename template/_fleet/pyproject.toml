@@ -1,0 +1,23 @@
+[project]
+name = "pedal-fleet"
+version = "0.1.0"
+description = "Keeps the pedalfx KiCad templates and boards on the shared fleet kit (DRC rules, text defaults, component classes)"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+pedal-fleet = "pedalfleet.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pedalfleet*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = ["pytest>=8"]
