@@ -1,0 +1,20 @@
+{
+  "$schema": "https://schemas.kicad.org/drc.v1.json",
+  "source": "fx-Test.kicad_pcb",
+  "violations": [
+    {"type": "silk_edge_clearance", "severity": "warning", "excluded": false,
+     "description": "Silkscreen clipped by board edge",
+     "items": [{"description": "Segment on Edge.Cuts"}, {"description": "Segment of RV3 on B.Silkscreen"}]},
+    {"type": "silk_edge_clearance", "severity": "warning", "excluded": true,
+     "description": "Silkscreen clipped by board edge",
+     "items": [{"description": "Segment on Edge.Cuts"}, {"description": "Segment of J104 on F.Silkscreen"}]},
+    {"type": "courtyards_overlap", "severity": "error", "excluded": false,
+     "description": "Courtyards overlap",
+     "items": [{"description": "Footprint J102"}, {"description": "Footprint J104"}]},
+    {"type": "assertion_failure", "severity": "error", "excluded": false,
+     "description": "Assertion failed (rule 'pedal-fleet probe: fires once per footprint when this file parses')",
+     "items": [{"description": "Footprint C1"}]}
+  ],
+  "unconnected_items": [],
+  "schematic_parity": []
+}
