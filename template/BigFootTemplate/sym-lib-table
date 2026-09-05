@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "Effects")(type "KiCad")(uri "/Users/andrewmiller/Documents/KiCad/9.0/extra_libs/Effects_Kicad/symbols/Effects.kicad_sym")(options "")(descr ""))
+)

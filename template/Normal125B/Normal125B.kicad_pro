@@ -3,7 +3,7 @@
     "3dviewports": [],
     "design_settings": {
       "defaults": {
-        "apply_defaults_to_fp_fields": false,
+        "apply_defaults_to_fp_fields": true,
         "apply_defaults_to_fp_shapes": false,
         "apply_defaults_to_fp_text": false,
         "board_outline_line_width": 0.05,
@@ -26,8 +26,8 @@
         },
         "fab_line_width": 0.1,
         "fab_text_italic": false,
-        "fab_text_size_h": 1.0,
-        "fab_text_size_v": 1.0,
+        "fab_text_size_h": 0.8,
+        "fab_text_size_v": 0.8,
         "fab_text_thickness": 0.15,
         "fab_text_upright": false,
         "other_line_width": 0.1,
@@ -41,11 +41,11 @@
           "height": 0.95,
           "width": 0.8
         },
-        "silk_line_width": 0.1,
+        "silk_line_width": 0.15,
         "silk_text_italic": false,
-        "silk_text_size_h": 1.0,
-        "silk_text_size_v": 1.0,
-        "silk_text_thickness": 0.1,
+        "silk_text_size_h": 0.8,
+        "silk_text_size_v": 0.8,
+        "silk_text_thickness": 0.15,
         "silk_text_upright": false,
         "zones": {
           "min_clearance": 0.0
@@ -651,5 +651,96 @@
       "Board Basic Setup"
     ]
   ],
-  "text_variables": {}
+  "text_variables": {},
+  "component_class_settings": {
+    "assignments": [
+      {
+        "component_class": "Pot",
+        "conditions_operator": "ALL",
+        "conditions": {
+          "REFERENCE": {
+            "primary": "RV*"
+          }
+        }
+      },
+      {
+        "component_class": "Jack",
+        "conditions_operator": "ALL",
+        "conditions": {
+          "REFERENCE": {
+            "primary": "J*"
+          }
+        }
+      },
+      {
+        "component_class": "Switch",
+        "conditions_operator": "ALL",
+        "conditions": {
+          "REFERENCE": {
+            "primary": "SW*"
+          }
+        }
+      },
+      {
+        "component_class": "Tall",
+        "conditions_operator": "ALL",
+        "conditions": {
+          "FOOTPRINT": {
+            "primary": "_MB_potentiometers:*"
+          }
+        }
+      },
+      {
+        "component_class": "Tall",
+        "conditions_operator": "ALL",
+        "conditions": {
+          "FOOTPRINT": {
+            "primary": "_MB_switches:*"
+          }
+        }
+      },
+      {
+        "component_class": "Tall",
+        "conditions_operator": "ALL",
+        "conditions": {
+          "FOOTPRINT": {
+            "primary": "Effects_Footprints:Neutrik_NMJ6HCD2"
+          }
+        }
+      },
+      {
+        "component_class": "Tall",
+        "conditions_operator": "ALL",
+        "conditions": {
+          "FOOTPRINT": {
+            "primary": "Effects_Footprints:Alpha_3PDT"
+          }
+        }
+      },
+      {
+        "component_class": "Tall",
+        "conditions_operator": "ALL",
+        "conditions": {
+          "FOOTPRINT": {
+            "primary": "Capacitor_THT:CP_Radial_*"
+          }
+        }
+      },
+      {
+        "component_class": "Tall",
+        "conditions_operator": "ALL",
+        "conditions": {
+          "FOOTPRINT": {
+            "primary": "Connector_PinSocket_2.54mm:*"
+          }
+        }
+      }
+    ],
+    "meta": {
+      "version": 0
+    },
+    "sheet_component_classes": {
+      "enabled": false
+    }
+  }
 }
