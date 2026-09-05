@@ -50,3 +50,10 @@ def test_project_from_path_accepts_dir_or_file(tmp_path):
     assert discover.project_from_path(p.dir).pro == p.pro
     assert discover.project_from_path(p.pro).kind == "board"
     assert discover.project_from_path(t.dir).kind == "template"
+
+
+def test_project_from_path_rejects_missing_paths(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        discover.project_from_path(tmp_path / "nope")
+    with pytest.raises(FileNotFoundError):
+        discover.project_from_path(tmp_path / "nope.kicad_pro")

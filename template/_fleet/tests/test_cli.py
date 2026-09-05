@@ -69,3 +69,27 @@ def test_new_template_verb(tmp_path, capsys):
                      "--templates-root", str(root), "--no-process-check"], capsys)
     assert code == 0 and "kit v1 applied" in out
     assert (root / "Neat" / "fx-Src.kicad_dru").exists() and (root / "Neat" / ".gitignore").exists()
+
+
+def test_apply_keeps_going_after_a_broken_project(tmp_path, capsys):
+    bad = write_project(tmp_path / "fx-Bad", "fx-Bad")
+    bad.pro.write_text("{ not json")
+    good = write_project(tmp_path / "fx-Good", "fx-Good")
+    code, out = run(["apply", str(bad.dir), str(good.dir), "--no-process-check"], capsys)
+    assert code == 1 and "error: fx-Bad" in out and "applied: fx-Good" in out
+    assert good.rules.exists()
+
+
+def test_apply_commit_picks_up_an_earlier_uncommitted_apply(tmp_path, capsys):
+    repo = tmp_path / "fx-A"
+    p = write_project(repo, "fx-A")
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@example.com"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    subprocess.run(["git", "-C", str(repo), "add", "."], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "init"], check=True)
+    run(["apply", str(repo), "--no-process-check"], capsys)                      # applied, not committed
+    code, out = run(["apply", str(repo), "--commit", "--no-process-check"], capsys)
+    assert code == 0 and "unchanged: fx-A" in out and "committed in" in out
+    status = subprocess.run(["git", "-C", str(repo), "status", "--short"], capture_output=True, text=True).stdout
+    assert status.strip() == ""

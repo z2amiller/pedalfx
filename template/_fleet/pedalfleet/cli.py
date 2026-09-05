@@ -109,31 +109,29 @@ def _diff(old: str, new: str, name: str) -> str:
     return "".join(difflib.unified_diff(old.splitlines(True), new.splitlines(True), f"a/{name}", f"b/{name}"))
 
 
-def cmd_apply(args, parser):
-    kit = load_kit(args.kit)
-    options = applymod.ApplyOptions(dry_run=args.dry_run, force=args.force,
-                                    prune_exclusions=args.prune_exclusions, commands=_commands(args))
-    kicad_cli = kicadcli.find_kicad_cli(args.kicad_cli) if args.validate else None
-    failures = 0
-    by_repo = {}
-    for project in resolve_targets(args, parser):
-        before = {}
-        if args.dry_run:
-            for path in (project.pro, project.rules, project.dir / ".gitignore"):
-                before[path] = path.read_text(encoding="utf-8") if path.exists() else ""
-        result = applymod.apply_project(project, kit, options)
-        if result.skipped:
-            print(f"skipped: {project.name} ({result.skipped})")
-            failures += 1
-            continue
-        if not result.written:
-            print(f"unchanged: {project.name}")
-            continue
+def _managed_paths(project):
+    return [p for p in (project.pro, project.rules, project.dir / ".gitignore") if p.exists()]
+
+
+def _apply_one(project, kit, options, args, kicad_cli, by_repo) -> int:
+    """Apply the kit to one project and print the outcome. Returns 1 on a failure worth the exit code."""
+    before = {}
+    if args.dry_run:
+        for path in (project.pro, project.rules, project.dir / ".gitignore"):
+            before[path] = path.read_text(encoding="utf-8") if path.exists() else ""
+    result = applymod.apply_project(project, kit, options)
+    if result.skipped:
+        print(f"skipped: {project.name} ({result.skipped})")
+        return 1
+    if not result.written:
+        print(f"unchanged: {project.name}")
+    else:
         verb = "would write" if args.dry_run else "applied"
         print(f"{verb}: {project.name} ({', '.join(p.name for p in result.written)})")
-        for note in result.notes:
-            print(f"    {note}")
-        if args.dry_run:
+    for note in result.notes:
+        print(f"    {note}")
+    if args.dry_run:
+        if result.written:
             pro = projectfile.load(project.pro)
             projectfile.merge_fragment(pro, kit.fragment)
             if args.prune_exclusions:
@@ -142,18 +140,37 @@ def cmd_apply(args, parser):
             new_rules, status = rules.splice(before[project.rules] or None, kit.rules_block)
             if status not in (rules.UNCHANGED, rules.MALFORMED):
                 print(_diff(before[project.rules], new_rules, project.rules.name))
-            continue
-        if kicad_cli is not None and project.pcb.exists():
-            verdict = kicadcli.validate_rules(kicad_cli, project.pro)
-            print(f"    rules: {verdict}")
-            if verdict == "broken":
-                failures += 1
-        if args.commit:
-            root = gitutil.repo_root(project.dir)
-            if root is None:
-                print("    not a git repository; nothing committed")
-            else:
-                by_repo.setdefault(root, []).extend(result.written)
+        return 0
+    failure = 0
+    if kicad_cli is not None and result.written and project.pcb.exists():
+        verdict = kicadcli.validate_rules(kicad_cli, project.pro)
+        print(f"    rules: {verdict}")
+        if verdict == "broken":
+            failure = 1
+    if args.commit:
+        root = gitutil.repo_root(project.dir)
+        if root is None:
+            print("    not a git repository; nothing committed")
+        else:
+            # Managed files are staged whether or not this run wrote them, so an interrupted
+            # earlier run (applied, not committed) is picked up by the next --commit.
+            by_repo.setdefault(root, []).extend(_managed_paths(project))
+    return failure
+
+
+def cmd_apply(args, parser):
+    kit = load_kit(args.kit)
+    options = applymod.ApplyOptions(dry_run=args.dry_run, force=args.force,
+                                    prune_exclusions=args.prune_exclusions, commands=_commands(args))
+    kicad_cli = kicadcli.find_kicad_cli(args.kicad_cli) if args.validate else None
+    failures = 0
+    by_repo = {}
+    for project in resolve_targets(args, parser):
+        try:
+            failures += _apply_one(project, kit, options, args, kicad_cli, by_repo)
+        except (OSError, ValueError, RuntimeError) as error:
+            print(f"error: {project.name}: {error}")
+            failures += 1
     for root, paths in by_repo.items():
         if gitutil.commit_paths(root, paths, COMMIT_MESSAGE.format(version=kit.version)):
             print(f"committed in {root}: {len(paths)} file(s)")

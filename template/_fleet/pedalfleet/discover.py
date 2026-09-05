@@ -76,5 +76,7 @@ def project_from_path(path) -> Project:
         if len(pros) != 1:
             raise ValueError(f"{path}: expected exactly one .kicad_pro, found {len(pros)}")
         path = pros[0]
+    elif not path.is_file():
+        raise FileNotFoundError(f"{path}: no such project directory or .kicad_pro file")
     kind = "template" if (path.parent / "meta").is_dir() else "board"
     return Project(path, kind)
