@@ -1,4 +1,6 @@
-"""Audit vias against pads and tracks of other nets (KiCad python): python3 viacheck.py board.kicad_pcb.\nDRC only flags a via inside a pad of ANOTHER net; a via inside a pad of its own net passes DRC but hurts\nsolderability, and a via dropped onto a track of another net gets that net propagated onto it at zone fill."""
+"""Audit vias against pads and tracks of other nets (KiCad python): python3 viacheck.py board.kicad_pcb.
+DRC only flags a via inside a pad of ANOTHER net; a via inside a pad of its own net passes DRC but hurts
+solderability, and a via dropped onto a track of another net gets that net propagated onto it at zone fill."""
 import sys, math, pcbnew
 b = pcbnew.LoadBoard(sys.argv[1]); mm = pcbnew.ToMM
 pads = [(p, p.GetBoundingBox()) for fp in b.GetFootprints() for p in fp.Pads()]
