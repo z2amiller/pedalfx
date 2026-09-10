@@ -124,8 +124,9 @@ def header_only(text):
     return "".join(kept)
 
 
-def rounded_outline(board, x0, y0, x1, y1, r=1.0, width=0.1):
-    """Edge.Cuts rectangle with radius-r corners: four lines and four arcs."""
+def rounded_outline(board, x0, y0, x1, y1, r=1.0, width=0.1, top_notches=()):
+    """Edge.Cuts rectangle with radius-r corners: four lines and four arcs. top_notches = [(xc, width, depth)]
+    cuts rectangular notches into the y0 edge (e.g. for a zip tie around the edge)."""
     def line(a, b):
         s = pcbnew.PCB_SHAPE(board); s.SetShape(pcbnew.SHAPE_T_SEGMENT); s.SetStart(V(*a)); s.SetEnd(V(*b))
         s.SetLayer(pcbnew.Edge_Cuts); s.SetWidth(MM(width)); board.Add(s)
@@ -134,7 +135,12 @@ def rounded_outline(board, x0, y0, x1, y1, r=1.0, width=0.1):
         s = pcbnew.PCB_SHAPE(board); s.SetShape(pcbnew.SHAPE_T_ARC); s.SetArcGeometry(V(*start), V(*mid), V(*end))
         s.SetLayer(pcbnew.Edge_Cuts); s.SetWidth(MM(width)); board.Add(s)
     k = r * (1 - math.sqrt(0.5))
-    line((x0 + r, y0), (x1 - r, y0)); line((x1, y0 + r), (x1, y1 - r))
+    xa = x0 + r
+    for xc, w, d in sorted(top_notches):
+        line((xa, y0), (xc - w / 2, y0)); line((xc - w / 2, y0), (xc - w / 2, y0 + d))
+        line((xc - w / 2, y0 + d), (xc + w / 2, y0 + d)); line((xc + w / 2, y0 + d), (xc + w / 2, y0))
+        xa = xc + w / 2
+    line((xa, y0), (x1 - r, y0)); line((x1, y0 + r), (x1, y1 - r))
     line((x1 - r, y1), (x0 + r, y1)); line((x0, y1 - r), (x0, y0 + r))
     arc((x1 - r, y0), (x1 - k, y0 + k), (x1, y0 + r))          # top right
     arc((x1, y1 - r), (x1 - k, y1 - k), (x1 - r, y1))          # bottom right
@@ -281,8 +287,8 @@ class GenBoard:
             prev = cur
         return cur
 
-    def outline(self, x0, y0, x1, y1, r=1.0, width=0.1):
-        rounded_outline(self.board, x0, y0, x1, y1, r, width)
+    def outline(self, x0, y0, x1, y1, r=1.0, width=0.1, top_notches=()):
+        rounded_outline(self.board, x0, y0, x1, y1, r, width, top_notches)
 
     # ---- text / title -----------------------------------------------------------------------
     def text(self, txt, x, y, layer, size=0.8, mirror=False, rot=0, justify=None, thickness=None):

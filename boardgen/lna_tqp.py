@@ -89,7 +89,7 @@ def lna_place(xr, ra, in_net):
         "C8": (xr, ra, 0, (in_net, "R")),
         "U1": (xr - 3.2, ra - 0.25, 0, ("/LNA_IN", "R")),      # after the 180 flip (pin 2 right) pins 2/7 sit on y=ra
         "C9": (xr - 6.6, ra, 0, ("/LNA_OUT", "R")),
-        "R3": (xr - 3.3, ra - 2.7, 0, ("/SD", "L")),           # shutdown pull-down above U1
+        "R3": (xr - 3.0, ra - 2.7, 0, ("/SD", "L")),           # shutdown pull-down above U1 (room for the BIAS via beside L9)
         "L9": (xr - 6.0, ra - 2.5, 90, ("/LNA_OUT", "D")),     # supply choke, its LNA_OUT pad over C9's
     }
 
