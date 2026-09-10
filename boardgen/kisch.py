@@ -184,12 +184,24 @@ class Schematic:
         self.items.append(f'\t(label "{name}"\n\t\t(at {x:g} {y:g} {rot})\n\t\t(effects\n\t\t\t(font\n\t\t\t\t(size 1.27 1.27)\n\t\t\t)\n'
                           f'\t\t\t(justify {justify})\n\t\t)\n\t\t(uuid "{u()}")\n\t)')
 
-    def gnd(self, ref_pin_or_xy, ref="#PWR"):
-        """power:GND symbol with its pin exactly on the given point (no wire needed)."""
+    def gnd(self, ref_pin_or_xy, ref="#PWR", rot=0):
+        """power:GND symbol with its pin exactly on the given point (no wire needed); rot=180 hangs it upwards."""
         x, y = self.pin(*ref_pin_or_xy) if isinstance(ref_pin_or_xy[0], str) else (snap(ref_pin_or_xy[0]), snap(ref_pin_or_xy[1]))
         n = sum(1 for r in self.refs if r.startswith("#PWR")) + 1
-        return self.place("power:GND", f"#PWR{n:02d}", "GND", "", x, y, 0, hide_value=False, in_bom=False,
-                          ref_off=(0, 0), val_off=(0, 3.81))
+        return self.place("power:GND", f"#PWR{n:02d}", "GND", "", x, y, rot, hide_value=False, in_bom=False,
+                          ref_off=(0, 0), val_off=(0, -3.81 if rot == 180 else 3.81))
+
+    def power(self, lib_id, value, ref_pin_or_xy, rot=0):
+        """Any power symbol (e.g. power:+5V) with its pin on the given point; rot=180 points it downwards."""
+        x, y = self.pin(*ref_pin_or_xy) if isinstance(ref_pin_or_xy[0], str) else (snap(ref_pin_or_xy[0]), snap(ref_pin_or_xy[1]))
+        n = sum(1 for r in self.refs if r.startswith("#PWR")) + 1
+        return self.place(lib_id, f"#PWR{n:02d}", value, "", x, y, rot, hide_value=False, in_bom=False,
+                          ref_off=(0, 0), val_off=(0, 3.81 if rot == 180 else -3.81))
+
+    def no_connect(self, ref_pin_or_xy):
+        """No-connect flag on a pin end."""
+        x, y = self.pin(*ref_pin_or_xy) if isinstance(ref_pin_or_xy[0], str) else (snap(ref_pin_or_xy[0]), snap(ref_pin_or_xy[1]))
+        self.items.append(f'\t(no_connect\n\t\t(at {x:g} {y:g})\n\t\t(uuid "{u()}")\n\t)')
 
     def pwr_flag(self, ref_pin_or_xy):
         """power:PWR_FLAG with its pin on the given point."""
