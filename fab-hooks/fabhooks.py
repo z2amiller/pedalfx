@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -181,3 +182,59 @@ def tag_exists(root: Path, tag: str) -> bool:
     except (OSError, subprocess.TimeoutExpired):
         return False
     return r.returncode == 0
+
+
+# --- gerber publishing: a copy of the zip at the repo root, public repos only ---
+
+VISIBILITY_ENV = "FABHOOKS_REPO_VISIBILITY"   # "public" | "private": skip the gh lookup (tests, offline)
+GH_ENV = "FABHOOKS_GH"                         # explicit path to gh
+GH_CANDIDATES = ("/opt/homebrew/bin/gh", "/usr/local/bin/gh")
+
+
+def find_gh(env=None) -> str | None:
+    """gh executable: $FABHOOKS_GH, PATH, then the usual Homebrew locations.
+
+    KiCad launches hooks with the GUI's minimal PATH, so PATH alone is not enough.
+    """
+    env = os.environ if env is None else env
+    explicit = env.get(GH_ENV)
+    if explicit:
+        return explicit if Path(explicit).exists() else None
+    found = shutil.which("gh")
+    if found:
+        return found
+    for candidate in GH_CANDIDATES:
+        if Path(candidate).exists():
+            return candidate
+    return None
+
+
+def repo_visibility(root: Path | str, env=None, timeout: int = 10) -> str | None:
+    """'public' or 'private' for the GitHub repo behind origin, None when it cannot be determined.
+
+    $FABHOOKS_REPO_VISIBILITY overrides the lookup. Unknown (no gh, offline, origin not on
+    GitHub) is deliberately None rather than a guess: the caller skips publishing and says so.
+    """
+    env = os.environ if env is None else env
+    forced = (env.get(VISIBILITY_ENV) or "").strip().lower()
+    if forced in ("public", "private"):
+        return forced
+    gh = find_gh(env)
+    if gh is None:
+        return None
+    try:
+        r = subprocess.run([gh, "repo", "view", "--json", "visibility", "--jq", ".visibility"],
+                           cwd=str(root), capture_output=True, text=True, timeout=timeout, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if r.returncode != 0:
+        return None
+    value = r.stdout.strip().lower()
+    return value if value in ("public", "private") else None
+
+
+def publish_gerber(root: Path | str, zip_path: Path | str) -> Path:
+    """Copy the generated gerber zip to the repo root under its own name (stable README link)."""
+    dest = Path(root) / Path(zip_path).name
+    shutil.copyfile(zip_path, dest)
+    return dest

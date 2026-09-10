@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""kicad-jlcpcb-tools post-generate hook: FABLOG row, commit, tag, push.
+"""kicad-jlcpcb-tools post-generate hook: FABLOG row, gerber at repo root (public repos), commit, tag, push.
 
 Local-first: the FABLOG append, commit, and tag always land before any network
 step, so a failed push never loses state. The FABLOG row also guarantees the
@@ -65,15 +65,36 @@ def main(argv=None, env=None) -> int:
     now = datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M")
     row = fabhooks.fablog_row(now, board, rev, gen, sha)
 
+    # A public repo gets a copy of the zip at its root, so people without KiCad can order
+    # the board from the README; it lands in this same commit and tag.
+    visibility = fabhooks.repo_visibility(root, env)
+    publish = visibility == "public"
+    if visibility is None:
+        publish_note = "gerber not published at repo root: visibility unknown (gh unavailable or offline)"
+    elif not publish:
+        publish_note = f"gerber not published at repo root: repo is {visibility}"
+    else:
+        publish_note = f"published {zip_path.name} at repo root (public repo)"
+    pathspec = [str(project_dir), fabhooks.FABLOG_NAME]
+    if publish:
+        pathspec.append(zip_path.name)
+
     if args.dry_run:
         print(f"DRY RUN: would append to {root / fabhooks.FABLOG_NAME}: {row.strip()}")
+        if publish:
+            print(f"DRY RUN: would publish {zip_path.name} at {root}")
+        else:
+            print(f"DRY RUN: {publish_note}")
         print(f"DRY RUN: would commit {msg!r}, tag {tag}, push origin HEAD + {tag}")
         return 0
 
     fabhooks.append_fablog(root, row)
+    if publish:
+        fabhooks.publish_gerber(root, zip_path)
+    print(publish_note)
     try:
-        fabhooks.git(root, "add", "-A", "--", str(project_dir), fabhooks.FABLOG_NAME)
-        fabhooks.git(root, "commit", "-m", msg, "--", str(project_dir), fabhooks.FABLOG_NAME)
+        fabhooks.git(root, "add", "-A", "--", *pathspec)
+        fabhooks.git(root, "commit", "-m", msg, "--", *pathspec)
         fabhooks.git(root, "tag", "-a", tag, "-m", msg)
     except subprocess.CalledProcessError as e:
         detail = ((e.stderr or "") + (e.stdout or "")).strip()

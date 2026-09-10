@@ -493,3 +493,67 @@ def test_board_rev_accepts_bare_numeric_title_block(tmp_path):
 def test_silk_fallback_accepts_prefixed_rev(tmp_path):
     board = _write(tmp_path, BOARD_NO_TITLE_BLOCK.replace('"v0.7"', '"psu0.7"'))
     assert fabhooks.board_rev(board) == "psu0.7"
+
+
+# --- gerber publishing to the repo root (public repos only) ---
+
+def test_repo_visibility_env_override_skips_gh(tmp_path):
+    assert fabhooks.repo_visibility(tmp_path, env={"FABHOOKS_REPO_VISIBILITY": "Public"}) == "public"
+    assert fabhooks.repo_visibility(tmp_path, env={"FABHOOKS_REPO_VISIBILITY": "private"}) == "private"
+
+
+def test_repo_visibility_none_when_gh_unavailable(tmp_path):
+    assert fabhooks.repo_visibility(tmp_path, env={"FABHOOKS_GH": str(tmp_path / "no-gh")}) is None
+
+
+def test_post_publishes_gerber_at_root_in_public_repo(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    env["FABHOOKS_REPO_VISIBILITY"] = "public"
+    assert post_generate.main(argv=[], env=env) == 0
+    out = capsys.readouterr().out
+    assert "published GERBER-fx-Test.zip" in out
+    assert (repo / "GERBER-fx-Test.zip").read_bytes() == b"fake gerbers"
+    tagged = subprocess.run(["git", "show", "--stat", "--format=", "fx-Test-v0.3-g7"],
+                            cwd=repo, capture_output=True, text=True).stdout
+    assert "GERBER-fx-Test.zip" in tagged
+    status = subprocess.run(["git", "status", "--short"], cwd=repo, capture_output=True, text=True).stdout
+    assert status.strip() == ""
+
+
+def test_post_publishes_from_project_subdir_to_repo_root(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    sub = repo / "KiCad"
+    sub.mkdir()
+    board = sub / "fx-Test.kicad_pcb"
+    board.write_text(BOARD_WITH_REV, encoding="utf-8")
+    env.update({"JLCPCB_PROJECT_DIR": str(sub), "JLCPCB_BOARD_PATH": str(board),
+                "FABHOOKS_REPO_VISIBILITY": "public"})
+    assert post_generate.main(argv=[], env=env) == 0
+    assert (repo / "GERBER-fx-Test.zip").exists() and not (sub / "GERBER-fx-Test.zip").exists()
+    tagged = subprocess.run(["git", "show", "--stat", "--format=", "fx-Test-v0.3-g7"],
+                            cwd=repo, capture_output=True, text=True).stdout
+    assert "GERBER-fx-Test.zip" in tagged
+
+
+def test_post_skips_gerber_in_private_repo(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    env["FABHOOKS_REPO_VISIBILITY"] = "private"
+    assert post_generate.main(argv=[], env=env) == 0
+    assert "not published" in capsys.readouterr().out
+    assert not (repo / "GERBER-fx-Test.zip").exists()
+
+
+def test_post_skips_gerber_when_visibility_unknown(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    env["FABHOOKS_GH"] = str(tmp_path / "no-gh")
+    assert post_generate.main(argv=[], env=env) == 0
+    assert "visibility unknown" in capsys.readouterr().out
+    assert not (repo / "GERBER-fx-Test.zip").exists()
+
+
+def test_post_dry_run_reports_publish_without_copying(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    env["FABHOOKS_REPO_VISIBILITY"] = "public"
+    assert post_generate.main(argv=["--dry-run"], env=env) == 0
+    assert "would publish GERBER-fx-Test.zip" in capsys.readouterr().out
+    assert not (repo / "GERBER-fx-Test.zip").exists()

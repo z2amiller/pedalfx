@@ -19,14 +19,31 @@ versions for you.
   letter/dash prefix plus major.minor, so `v0.1`, `0.3`, and `psu-1.0` are all
   fine. An unreachable origin (offline) is only a warning.
 - `post_generate.py`: appends `| date | board | rev | gen | zip-sha12 | | |` to
-  `FABLOG.md` at the repo root, commits the project directory (pathspec-scoped,
-  so unrelated staged work is never swept in), creates annotated tag
-  `fx-BloodySMD-v0.1-g17`, and pushes HEAD plus the tag atomically. Local-first:
-  a failed push never loses the commit or tag. Refuses to overwrite existing
-  tags, and validates the tag name before touching anything.
+  `FABLOG.md` at the repo root, copies the gerber zip to the repo root when the
+  GitHub repo behind `origin` is **public** (see below), commits the project
+  directory plus those files (pathspec-scoped, so unrelated staged work is never
+  swept in), creates annotated tag `fx-BloodySMD-v0.1-g17`, and pushes HEAD plus
+  the tag atomically. Local-first: a failed push never loses the commit or tag.
+  Refuses to overwrite existing tags, and validates the tag name before touching
+  anything.
 - `set_board_rev.py board.kicad_pcb v0.1`: one-time rollout helper to set the
   title-block rev (close KiCad first — it aborts if KiCad's lock file is
   present).
+
+## Gerbers at the repo root (public repos)
+
+People who don't run KiCad can order a board from a public repo's README if the
+gerber zip sits at the root. The post-hook does that copy itself:
+`GERBER-<board>.zip` (the plugin's own name, so a README link stays valid across
+revisions) lands at the repo root in the same commit and tag as the generation,
+and the FABLOG row's hash identifies it. Visibility comes from
+`gh repo view --json visibility` run in the repo (`gh` is found via
+`$FABHOOKS_GH`, PATH, then the Homebrew locations, because KiCad launches hooks
+with the GUI's minimal PATH). Private repos get nothing at the root. If `gh` is
+missing, offline, or `origin` isn't on GitHub, the hook says "visibility
+unknown" and skips the copy rather than guessing.
+`FABHOOKS_REPO_VISIBILITY=public|private` overrides the lookup (tests, or
+forcing a private repo to publish).
 
 ## Plugin configuration (one-time, global)
 
