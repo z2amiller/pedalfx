@@ -13,6 +13,7 @@ uv run pedal-fleet apply fx-Foo --dry-run   # show the diff for one project
 uv run pedal-fleet drc --templates --fail-on error
 uv run pedal-fleet drc fx-Foo --save before.json   # later: --baseline before.json
 uv run pedal-fleet new-template Name --from ~/Documents/repos/fx-Foo --title "..." --description "..."
+uv run pedal-fleet clone util-Bar --from ~/Documents/repos/util-Foo --status utility --note "..." --github public
 ```
 
 Targets are project directories or `.kicad_pro` files, or `--templates`,
@@ -29,3 +30,16 @@ ignores an unparsable rules file silently.
 
 Tests: `uv run pytest -q` (kicad-cli integration tests skip when it is not
 installed).
+
+`clone` copies a board's working files (project, board, every sheet, rules, lib
+tables, `jlcpcb/project.db`, `.gitignore`) into `<repos>/<name>`, renames the
+project everywhere KiCad embeds it (project-file meta, each sheet's
+symbol-instance `project` entries, the board's `sheetfile` entries), leaves
+title blocks and silk alone (it lists any file that still mentions the old
+name), applies the kit, verifies the rename with a kicad-cli netlist export, and
+makes the initial commit on `main`. `--status`/`--note` set the clone's own
+`BOARD_STATUS`/`BOARD_NOTE` (a `--status` without `--note` drops the source's
+note); `--github public|private` also runs `gh repo create` and pushes;
+`--no-git`, `--no-verify` and `--no-process-check` are for scripts and tests.
+`~/Documents/repos/new-pedal.sh` predates this and copies from a location that
+no longer exists; use `clone` instead.

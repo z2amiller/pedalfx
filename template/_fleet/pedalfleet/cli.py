@@ -1,12 +1,14 @@
-"""pedal-fleet command line: check | apply | drc | new-template."""
+"""pedal-fleet command line: check | apply | drc | new-template | clone."""
 import argparse
 import difflib
 import json
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 from . import apply as applymod
+from . import clone as clonemod
 from . import gitutil, kicadcli, projectfile, rules
 from .discover import find_boards, find_templates, project_from_path
 from .kit import load_kit
@@ -61,6 +63,22 @@ def build_parser():
     new.add_argument("--templates-root", type=Path, default=TEMPLATES_ROOT)
     new.add_argument("--kit", type=Path, default=KIT_DIR)
     new.add_argument("--no-process-check", action="store_true")
+
+    cl = sub.add_parser("clone", help="copy a board into a new project (renamed, kit applied, git initialised)")
+    cl.add_argument("name", help="new project name, e.g. util-BleedAFuzz")
+    cl.add_argument("--from", dest="source", required=True, type=Path, help="source project dir or .kicad_pro")
+    cl.add_argument("--dest", type=Path, default=None, help="destination dir (default: <repos>/<name>)")
+    cl.add_argument("--repos", type=Path, default=DEFAULT_REPOS)
+    cl.add_argument("--status", choices=clonemod.STATUSES, default=None, help="BOARD_STATUS for the clone")
+    cl.add_argument("--note", default=None, help="BOARD_NOTE for the clone")
+    cl.add_argument("--github", choices=("public", "private"), default=None,
+                    help="also create the GitHub repo and push main")
+    cl.add_argument("--no-git", action="store_true", help="skip git init / initial commit")
+    cl.add_argument("--kit", type=Path, default=KIT_DIR)
+    cl.add_argument("--kicad-cli", type=Path, default=None)
+    cl.add_argument("--no-verify", action="store_true", help="skip the kicad-cli netlist export that checks the rename")
+    cl.add_argument("--force", action="store_true")
+    cl.add_argument("--no-process-check", action="store_true")
     return parser
 
 
@@ -225,10 +243,54 @@ def cmd_new_template(args, parser):
     return 0
 
 
+def cmd_clone(args, parser):
+    kit = load_kit(args.kit)
+    project = clonemod.clone_project(args.name, args.source, dest=args.dest, dest_root=args.repos,
+                                     status=args.status, note=args.note)
+    source_name = project_from_path(args.source).name
+    print(f"cloned {source_name} -> {project.dir}")
+    result = applymod.apply_project(project, kit, applymod.ApplyOptions(
+        force=args.force, prune_exclusions=True, commands=_commands(args)))
+    if result.skipped:
+        print(f"kit NOT applied: {result.skipped}")
+        return 1
+    print(f"kit v{kit.version} applied ({len(result.written)} file(s))")
+    for note in result.notes:
+        print(f"  {note}")
+    try:
+        kicad_cli = None if args.no_verify else kicadcli.find_kicad_cli(args.kicad_cli)
+    except FileNotFoundError:
+        kicad_cli = None
+    if kicad_cli is None:
+        print("rename not verified" + ("" if args.no_verify else ": kicad-cli not found"))
+    else:
+        sheet = project.pro.with_suffix(".kicad_sch")
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "verify.net"
+            proc = subprocess.run([str(kicad_cli), "sch", "export", "netlist", "--format", "kicadsexpr",
+                                   "-o", str(out), str(sheet)], capture_output=True, text=True, check=False)
+        if proc.returncode == 0:
+            print("rename verified: kicad-cli netlist export ok")
+        else:
+            print(f"rename NOT verified: kicad-cli netlist export failed: {proc.stderr.strip() or proc.stdout.strip()}")
+            return 1
+    leftovers = clonemod.leftover_mentions(project, source_name)
+    if leftovers:
+        print(f"still mentions {source_name} (title block / silk / notes, edit in KiCad): "
+              + ", ".join(f"{name} x{count}" for name, count in leftovers.items()))
+    if not args.no_git:
+        gitutil.init_repo(project.dir, f"Initial commit: cloned from {source_name}")
+        print("git: initialised on main with one commit")
+        if args.github:
+            print(gitutil.create_github_repo(project.dir, args.name, args.github))
+    return 0
+
+
 def main(argv=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    handlers = {"check": cmd_check, "apply": cmd_apply, "drc": cmd_drc, "new-template": cmd_new_template}
+    handlers = {"check": cmd_check, "apply": cmd_apply, "drc": cmd_drc, "new-template": cmd_new_template,
+                "clone": cmd_clone}
     try:
         return handlers[args.verb](args, parser)
     except (FileNotFoundError, ValueError, RuntimeError) as error:

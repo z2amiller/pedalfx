@@ -93,3 +93,15 @@ def test_apply_commit_picks_up_an_earlier_uncommitted_apply(tmp_path, capsys):
     assert code == 0 and "unchanged: fx-A" in out and "committed in" in out
     status = subprocess.run(["git", "-C", str(repo), "status", "--short"], capture_output=True, text=True).stdout
     assert status.strip() == ""
+
+
+def test_clone_verb(tmp_path, capsys):
+    from tests.test_clone import make_source
+    src = make_source(tmp_path)
+    dest = tmp_path / "out" / "fx-New"
+    code, out = run(["clone", "fx-New", "--from", str(src.dir), "--dest", str(dest), "--status", "wip",
+                     "--no-git", "--no-verify", "--no-process-check"], capsys)
+    assert code == 0 and "cloned fx-Src" in out and "kit v1 applied" in out and "rename not verified" in out
+    assert "still mentions" not in out
+    assert (dest / "fx-New.kicad_dru").exists() and not (dest / ".git").exists()
+    assert '(project "fx-New"' in (dest / "fx-New.kicad_sch").read_text()
