@@ -36,3 +36,6 @@ fp-info-cache
 # Exported BOM files
 *.xml
 *.csv
+
+# python
+__pycache__/
