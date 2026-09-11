@@ -20,6 +20,7 @@ FP_0603 = {"C": "Capacitor_SMD:C_0603_1608Metric", "L": "Inductor_SMD:L_0603_160
 TQP_FP = "Package_DFN_QFN:DFN-8-1EP_2x2mm_P0.5mm_EP0.8x1.6mm"
 TQP_LCSC = "C920261"
 CHOKE_150N = ("150n", "C113131")          # LQW18ANR15G00D, 772 and 1090 boards
+CHOKE_1U5 = ("1u5", "C48946391")           # MWI0603IF1R5KST-HF, VHF centre board (SRF > 200 MHz)
 BLOCK_1N = ("1n", "C1588")                # 772 (and VHF)
 BLOCK_100P = ("100p", "C14858")           # 1090
 
