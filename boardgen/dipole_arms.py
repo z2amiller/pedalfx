@@ -5,6 +5,9 @@ fabbed copper) and adds an optional mask landing window at each arm's inner end 
 (kicad-wbhj). Each arm: a THT custom pad (copper both faces) for the strip with an anchor hole, round stitch holes,
 an SMD custom pad for the trim ladder (bars + cut bridges, front only), mask windows over the bridges, silk ticks,
 fab outline and courtyard. Pad 1 = left arm (ANT_A), pad 2 = right arm (ANT_B).
+
+util-Antenna1090/tools/gen_1090.py and util-Antenna772/tools/gen_772.py still carry their own copies of this
+function; re-pointing them to import from here is the rest of bead kicad-y27p.
 """
 import uuid
 
@@ -22,6 +25,7 @@ def rect_pts(x1, y1, x2, y2):
 
 
 def bars(s, strip_end, n, pitch, gap):
+    """[(x1, x2)] of the bars of arm s (+1 right, -1 left), inner to outer, board-local x (signed)."""
     out = []
     for k in range(n):
         a = strip_end + k * pitch + gap
@@ -31,6 +35,7 @@ def bars(s, strip_end, n, pitch, gap):
 
 
 def gaps(s, strip_end, n, pitch, gap):
+    """[(x1, x2)] of the cut gaps of arm s, inner to outer (gap 0 = strip to bar 1)."""
     out = []
     for k in range(n):
         a = strip_end + k * pitch
@@ -64,8 +69,8 @@ def arm_footprint(*, name, generator, descr, tags, gap, arm_w, arm_l, ladder_n, 
     a(f'\t(property "Description" "" (at 0 0 0) (layer "F.Fab") (hide yes) (uuid "{u()}") (effects (font (size 1.27 1.27) (thickness 0.15))))')
     a('\t(attr exclude_from_pos_files exclude_from_bom)')
 
-    def text(s, x, y, rot=0, size=0.8, layer="F.SilkS"):
-        a(f'\t(fp_text user "{s}" (at {x:g} {y:g} {rot}) (layer "{layer}") (uuid "{u()}") '
+    def text(label, x, y, rot=0, size=0.8, layer="F.SilkS"):
+        a(f'\t(fp_text user "{label}" (at {x:g} {y:g} {rot}) (layer "{layer}") (uuid "{u()}") '
           f'(effects (font (size {size} {size}) (thickness {size * 0.15:.2f}))))')
 
     def pad(num, kind, shape, x, y, size, drill=None, layers='"*.Cu"', extra=""):
@@ -84,11 +89,12 @@ def arm_footprint(*, name, generator, descr, tags, gap, arm_w, arm_l, ladder_n, 
         b = bars(s, strip_end, ladder_n, bar_pitch, bar_gap)
         bx0 = (b[0][0] + b[0][1]) / 2
         prims = [poly(rect_pts(x1 - bx0, -hw, x2 - bx0, hw)) for x1, x2 in b]
-        for g1, g2 in gaps(s, strip_end, ladder_n, bar_pitch, bar_gap):
+        gs = gaps(s, strip_end, ladder_n, bar_pitch, bar_gap)
+        for g1, g2 in gs:
             prims.append(poly(rect_pts(g1 - bridge_ext - bx0, -bridge_w / 2, g2 + bridge_ext - bx0, bridge_w / 2)))
         pad(num, "smd", "custom", bx0, 0, smd_anchor, layers='"F.Cu"',
             extra=f" (options (clearance outline) (anchor rect)) (primitives {' '.join(prims)})")
-        for g1, g2 in gaps(s, strip_end, ladder_n, bar_pitch, bar_gap):
+        for g1, g2 in gs:
             gx = (g1 + g2) / 2
             a(f'\t(fp_rect (start {gx - mask_pad[0]:g} {-bridge_w / 2 - mask_pad[1]:g}) (end {gx + mask_pad[0]:g} {bridge_w / 2 + mask_pad[1]:g}) '
               f'(stroke (width 0) (type default)) (fill yes) (layer "F.Mask") (uuid "{u()}"))')
@@ -107,7 +113,9 @@ def arm_footprint(*, name, generator, descr, tags, gap, arm_w, arm_l, ladder_n, 
     return "\n".join(o) + "\n"
 
 
-# The two fabbed geometries (util-Antenna1090 0.1-g1, util-Antenna772 0.1-g1).
+# The two fabbed geometries (util-Antenna1090 0.1-g1, util-Antenna772 0.1-g1). The descr= strings below are literal
+# copies of the fabbed footprints' descriptions (part of the byte-equality test in test_dipole_arms.py) and must be
+# edited by hand if the geometry constants below change.
 ARMS_1090 = dict(
     name="Dipole_1090_Arms", generator="util-Antenna1090/gen_1090.py",
     descr="1090 MHz PCB half-wave dipole: two 6 x 50 mm arms either side of a 30 mm centre gap, "

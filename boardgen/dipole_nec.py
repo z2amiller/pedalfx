@@ -5,12 +5,19 @@ one wire of radius feed_r with the source on its middle segment (5 mm traces -> 
 misreport R). Flat strip -> wire radius W/4. Each ground pour is a wire grid (x0, x1, y0, y1, cell, r, z) in mm,
 z above the arm plane; the stacked UHF module has one at z 0 and one at z 1.6. necpp raises a bare exception for
 some L at a given segment length: report_safe steps L by 0.25 mm.
+
+POUR_MODULE_BACK and POUR_MODULE_FRONT are modelled as two separate floating wire grids with no stitching vias
+between the faces; that simplification is deliberate (a via mesh would need its own convergence study) and untested.
 """
 import math
 from PyNEC import nec_context
 
 MM = 1e-3
 POUR_1090_INTEGRATED = (-18, 18, 6, 22, 4.0, 0.6, 0.0)     # 36 x 16 mm pour, 6 mm off the feed line, as fabbed
+# The fabbed util-Antenna772 board's pour is 36 x 16 mm, 6 mm off the feed line, exactly like the 1090's:
+# gen_772_board.py POUR = x 97..133, y 21..37 with the feed at y 43, so this constant is correct as written. The
+# old tools/dipole772_nec.py in that repo used a 24 x 16 pour with feed_r 0.4 and seg 4.0 and reported 762 MHz;
+# this model gives 764.9 MHz for the same board.
 POUR_772_INTEGRATED = (-18, 18, 6, 22, 4.0, 0.6, 0.0)
 POUR_MODULE_BACK = (-15, 15, 6, 22, 4.0, 0.6, 0.0)         # module back face, mask on mask
 POUR_MODULE_FRONT = (-15, 15, 6, 22, 4.0, 0.6, 1.6)        # module front face, one board thickness up
@@ -79,19 +86,22 @@ def resonance(res):
 def report(name, L, W, G, pours=(), f0=900.0, f1=1300.0, f_mark=1090.0, z0=50.0):
     res = sweep(L, W, G, pours, f0=f0, f1=f1, z0=z0)
     fr, rr = resonance(res)
+    assert f0 <= f_mark <= f1, f"f_mark {f_mark} outside the sweep {f0}-{f1}"
     vmark = min(res, key=lambda r: abs(r[0] - f_mark))[3]
     lo = min((r for r in res if r[3] < 2), key=lambda r: r[0], default=None)
     hi = max((r for r in res if r[3] < 2), key=lambda r: r[0], default=None)
     bw = f"{lo[0]:.0f}-{hi[0]:.0f}" if lo and hi else "n/a"
     print(f"{name:44s} f_res={fr and round(fr, 1)} MHz  R={rr and round(rr, 1)}  VSWR50@{f_mark:g}={vmark:.2f}  VSWR<2: {bw}", flush=True)
-    return fr, rr
+    return fr, rr, L
 
 
 def report_safe(name, L, W, G, pours=(), **kw):
+    last_exc = None
     for trial in (L, L + 0.25, L - 0.25, L + 0.5):
         try:
             return report(f"{name} (L={trial:g})", trial, W, G, pours, **kw)
-        except Exception:
+        except Exception as e:
+            last_exc = e
             continue
-    print(f"{name}: necpp failed for L near {L}")
-    return None, None
+    print(f"{name}: necpp failed for L near {L}: {last_exc!r}")
+    return None, None, None
