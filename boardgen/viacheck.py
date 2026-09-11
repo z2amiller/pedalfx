@@ -15,7 +15,8 @@ hits = 0
 for v in vias:
     c = v.GetPosition(); r = pcbnew.FromMM(0.3)
     for p, bb in pads:
-        if p.GetNetname() == v.GetNetname() and p.GetNumber() in ("9", ""): continue    # the deliberate paddle via (and the paddle's unnumbered paste apertures)
+        if p.GetNumber() == "": continue                                              # unnumbered paste/mask apertures (no copper)
+        if p.GetNetname() == v.GetNetname() and p.GetNumber() == "9": continue    # the deliberate paddle via
         if bb.GetLeft() - r < c.x < bb.GetRight() + r and bb.GetTop() - r < c.y < bb.GetBottom() + r:
             hits += 1; print(f"  via {v.GetNetname()} ({mm(c.x):.2f},{mm(c.y):.2f}) touches pad {p.GetParentFootprint().GetReference()}.{p.GetNumber()} [{p.GetNetname()}]")
     for s in segs:
