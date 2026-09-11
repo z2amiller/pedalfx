@@ -124,11 +124,13 @@ def header_only(text):
     return "".join(kept)
 
 
-def rounded_outline(board, x0, y0, x1, y1, r=1.0, width=0.1, top_notches=(), top_corner_notches=()):
+def rounded_outline(board, x0, y0, x1, y1, r=1.0, width=0.1, top_notches=(), top_corner_notches=(), bottom_notches=()):
     """Edge.Cuts rectangle with radius-r corners: four lines and four arcs. top_notches = [(xc, width, depth)]
     cuts rectangular notches into the y0 edge (e.g. for a zip tie around the edge). top_corner_notches =
     [(cx, cy, rn)] replaces the top-left and/or top-right rounded corner with a concave circular bite of radius
-    rn centred at (cx, cy) (an enclosure's corner screw boss); the side each one belongs to is taken from cx."""
+    rn centred at (cx, cy) (an enclosure's corner screw boss); the side each one belongs to is taken from cx.
+    bottom_notches = [(xc, width, depth)] mirrors top_notches, cutting into the y1 edge instead (e.g. a pigtail
+    cinch slot). Empty (the default) reproduces the plain y1 edge exactly as before."""
     def line(a, b):
         s = pcbnew.PCB_SHAPE(board); s.SetShape(pcbnew.SHAPE_T_SEGMENT); s.SetStart(V(*a)); s.SetEnd(V(*b))
         s.SetLayer(pcbnew.Edge_Cuts); s.SetWidth(MM(width)); board.Add(s)
@@ -160,7 +162,12 @@ def rounded_outline(board, x0, y0, x1, y1, r=1.0, width=0.1, top_notches=(), top
         arc((xt, y0), mid, (x1, ys)); line((x1, ys), (x1, y1 - r))
     else:
         arc((x1 - r, y0), (x1 - k, y0 + k), (x1, y0 + r)); line((x1, y0 + r), (x1, y1 - r))      # top right
-    line((x1 - r, y1), (x0 + r, y1))
+    xb2 = x1 - r
+    for xc, w, d in sorted(bottom_notches, reverse=True):
+        line((xb2, y1), (xc + w / 2, y1)); line((xc + w / 2, y1), (xc + w / 2, y1 - d))
+        line((xc + w / 2, y1 - d), (xc - w / 2, y1 - d)); line((xc - w / 2, y1 - d), (xc - w / 2, y1))
+        xb2 = xc - w / 2
+    line((xb2, y1), (x0 + r, y1))
     arc((x1, y1 - r), (x1 - k, y1 - k), (x1 - r, y1))          # bottom right
     arc((x0 + r, y1), (x0 + k, y1 - k), (x0, y1 - r))          # bottom left
     if "L" in bites:
@@ -309,8 +316,8 @@ class GenBoard:
             prev = cur
         return cur
 
-    def outline(self, x0, y0, x1, y1, r=1.0, width=0.1, top_notches=(), top_corner_notches=()):
-        rounded_outline(self.board, x0, y0, x1, y1, r, width, top_notches, top_corner_notches)
+    def outline(self, x0, y0, x1, y1, r=1.0, width=0.1, top_notches=(), top_corner_notches=(), bottom_notches=()):
+        rounded_outline(self.board, x0, y0, x1, y1, r, width, top_notches, top_corner_notches, bottom_notches)
 
     # ---- text / title -----------------------------------------------------------------------
     def text(self, txt, x, y, layer, size=0.8, mirror=False, rot=0, justify=None, thickness=None):
