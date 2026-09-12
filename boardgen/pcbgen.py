@@ -146,9 +146,9 @@ def rounded_outline(board, x0, y0, x1, y1, r=1.0, width=0.1, top_notches=(), top
         xs = x1 if side == "R" else x0
         xt = cx - math.sqrt(rn * rn - (cy - y0) ** 2) if side == "R" else cx + math.sqrt(rn * rn - (cy - y0) ** 2)
         ys = cy + math.sqrt(rn * rn - (cx - xs) ** 2)
-        dx, dy = cx - xs, cy - y0                                  # from the board corner toward the centre
+        dx, dy = (x0 + x1) / 2 - cx, (y0 + y1) / 2 - cy            # from the bite centre toward the board interior
         n = math.hypot(dx, dy)
-        mid = (cx + rn * dx / n, cy + rn * dy / n)
+        mid = (cx + rn * dx / n, cy + rn * dy / n)                 # the concave arc's mid-point, whichever side of the edge cx lies
         bites[side] = (xt, ys, mid)
     xa = x0 + r if "L" not in bites else bites["L"][0]
     for xc, w, d in sorted(top_notches):
