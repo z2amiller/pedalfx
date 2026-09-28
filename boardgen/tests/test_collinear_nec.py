@@ -54,3 +54,10 @@ def test_necpp_failures_are_nudged(monkeypatch):
     monkeypatch.setattr(collinear_nec, "_run", flaky)
     r = evaluate(Collinear(centre_arm=46, outer=[110], stub_elec=[1.1 * QW]))
     assert r["z"].real > 0 and calls == [46, 46.05]
+
+
+def test_thin_stub_junction_builds_and_matters_a_little():
+    thick = evaluate(Collinear(centre_arm=46, outer=[110], stub_elec=[1.1 * QW], stub_axial=6.9))
+    thin = evaluate(Collinear(centre_arm=46, outer=[110], stub_elec=[1.1 * QW], stub_axial=6.9, stub_r=0.25))
+    assert thin["z"] != thick["z"]
+    assert abs(thin["gain_dbi"] - thick["gain_dbi"]) < 0.5

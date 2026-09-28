@@ -35,6 +35,7 @@ class Collinear:
     stub_z0: float = 150.0
     gap: float = 30.0
     stub_axial: float = 10.0
+    stub_r: float = None                       # radius of the wire joining the element ends at a stub (None: width / 4)
     width: float = 6.0
     pours: tuple = (POUR_MODULE_BACK, POUR_MODULE_FRONT)
     seg: float = 3.0
@@ -68,7 +69,7 @@ def build(ctx, c):
         x += c.centre_arm
         for length in c.outer:
             a, b = s * x, s * (x + c.stub_axial)
-            stubs.append((wire(min(a, b), max(a, b), r, 3), 2))
+            stubs.append((wire(min(a, b), max(a, b), c.stub_r if c.stub_r else r, 3), 2))
             x += c.stub_axial
             a, b = s * x, s * (x + length)
             wire(min(a, b), max(a, b), r)
