@@ -28,9 +28,10 @@ def find_kicad_cli(explicit=None) -> Path:
     raise FileNotFoundError("kicad-cli not found: install KiCad, pass --kicad-cli, or set KICAD_CLI")
 
 
-def run_drc(kicad_cli: Path, pcb: Path, out_json: Path) -> dict:
-    command = [str(kicad_cli), "pcb", "drc", "--format", "json", "--refill-zones", "--severity-all",
-               "-o", str(out_json), str(pcb)]
+def run_drc(kicad_cli: Path, pcb: Path, out_json: Path, refill_zones: bool = True) -> dict:
+    command = [str(kicad_cli), "pcb", "drc", "--format", "json", "--severity-all", "-o", str(out_json), str(pcb)]
+    if refill_zones:
+        command.insert(5, "--refill-zones")
     result = subprocess.run(command, capture_output=True, text=True, check=False)
     if result.returncode != 0 or not Path(out_json).exists():
         raise RuntimeError(f"kicad-cli drc failed ({result.returncode}): {result.stderr.strip() or result.stdout.strip()}")

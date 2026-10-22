@@ -1,4 +1,4 @@
-"""pedal-fleet command line: check | apply | drc | new-template | clone."""
+"""pedal-fleet command line: check | apply | drc | new-template | clone | silk-labels."""
 import argparse
 import difflib
 import json
@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import apply as applymod
 from . import clone as clonemod
-from . import gitutil, kicadcli, projectfile, rules
+from . import gitutil, guard, kicadcli, projectfile, rules, silklabels
 from .discover import find_boards, find_templates, project_from_path
 from .kit import load_kit
 from .newtemplate import create_template
@@ -79,6 +79,17 @@ def build_parser():
     cl.add_argument("--no-verify", action="store_true", help="skip the kicad-cli netlist export that checks the rename")
     cl.add_argument("--force", action="store_true")
     cl.add_argument("--no-process-check", action="store_true")
+
+    sl = sub.add_parser("silk-labels",
+                        help="put 2-pad passive/diode reference labels north (horizontal parts) or west (vertical)")
+    sl.add_argument("targets", nargs="+", help="project directories or .kicad_pro files")
+    sl.add_argument("--dry-run", action="store_true", help="report the plan, write nothing")
+    sl.add_argument("--gap", type=float, default=silklabels.GAP, help="mm from courtyard edge to text centre")
+    sl.add_argument("--skip", default="", help="comma-separated refs to leave alone")
+    sl.add_argument("--no-drc", action="store_true", help="skip the kicad-cli DRC cross-check")
+    sl.add_argument("--kicad-cli", default=None)
+    sl.add_argument("--force", action="store_true", help="proceed while KiCad runs (never with a lock file)")
+    sl.add_argument("--no-process-check", action="store_true")
     return parser
 
 
@@ -286,11 +297,55 @@ def cmd_clone(args, parser):
     return 0
 
 
+def cmd_silk_labels(args, parser):
+    skip = {ref.strip() for ref in args.skip.split(",") if ref.strip()}
+    kicad_cli = None
+    if not args.no_drc:
+        try:
+            kicad_cli = kicadcli.find_kicad_cli(args.kicad_cli)
+        except FileNotFoundError:
+            print("kicad-cli not found: DRC cross-check skipped")
+    failures = 0
+    for target in args.targets:
+        project = project_from_path(target)
+        if not project.pcb.exists():
+            print(f"{project.name}: no board file, skipped")
+            continue
+        checked = guard.check_guard(project, force=args.force, commands=_commands(args))
+        if not checked.ok:
+            print(f"{project.name}: not touched: {checked.reason}")
+            failures += 1
+            continue
+        result = silklabels.run(project.pcb, project.pro, gap=args.gap, skip=skip, kicad_cli=kicad_cli)
+        moved = result.count("move")
+        print(f"== {project.name}: {len(result.plans)} passive/diode label(s): {moved} moved, "
+              f"{result.count('keep')} already fit, {result.count('blocked')} left alone"
+              + (f", {result.count('skip')} skipped" if result.count("skip") else ""))
+        left = sorted((ref, plan.reason) for ref, plan in result.plans.items() if plan.action == "blocked")
+        if left:
+            print("   left alone:")
+            for ref, reason in left:
+                print(f"     {ref:6s} {reason}")
+        if result.drc_checked:
+            kinds = sorted(set(result.silk_before) | set(result.silk_after))
+            change = ", ".join(f"{k} {result.silk_before[k]} -> {result.silk_after[k]}" for k in kinds) or "none"
+            new = "none" if not result.new_violations else f"{len(result.new_violations)} (not from moved labels)"
+            print(f"   DRC silk: {change}; new: {new}")
+        elif moved and kicad_cli is None and not args.no_drc:
+            print("   DRC cross-check skipped")
+        if args.dry_run or not moved:
+            print("   nothing written" + (" (dry run)" if args.dry_run and moved else ""))
+        else:
+            project.pcb.write_text(result.text, encoding="utf-8")
+            print(f"   wrote {project.pcb.name}: {moved} label(s) moved; open it in KiCad to review")
+    return 1 if failures else 0
+
+
 def main(argv=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     handlers = {"check": cmd_check, "apply": cmd_apply, "drc": cmd_drc, "new-template": cmd_new_template,
-                "clone": cmd_clone}
+                "clone": cmd_clone, "silk-labels": cmd_silk_labels}
     try:
         return handlers[args.verb](args, parser)
     except (FileNotFoundError, ValueError, RuntimeError) as error:
