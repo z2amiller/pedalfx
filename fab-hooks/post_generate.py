@@ -54,7 +54,7 @@ def main(argv=None, env=None) -> int:
 
     if fabhooks.git(root, "check-ref-format", f"refs/tags/{tag}", check=False).returncode != 0:
         print(f"FAIL: {tag!r} is not a valid git tag name (board filename with "
-              "spaces or special characters?) -- rename the board file")
+              "special characters?) -- rename the board file")
         return 1
 
     if fabhooks.tag_exists(root, tag):

@@ -89,7 +89,10 @@ FABLOG_HEADER = (
 
 
 def tag_name(board: str, rev: str, gen: str) -> str:
-    return f"{board}-{rev}-g{gen}"
+    """Git tag for a generation. Whitespace in the board name becomes "_" (a git ref can't hold spaces, and "-"
+    already separates the fields); FABLOG rows and commit messages keep the real name."""
+    safe = re.sub(r"\s+", "_", board.strip())
+    return f"{safe}-{rev}-g{gen}"
 
 
 def commit_message(board: str, rev: str, gen: str) -> str:

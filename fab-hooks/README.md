@@ -3,8 +3,9 @@
 Pre/post generation hooks for
 [kicad-jlcpcb-tools](https://github.com/Bouni/kicad-jlcpcb-tools)
 (generation-hook feature, PR #743). Every fab-output generation gets: a
-FABLOG.md row, a git commit, an annotated tag `<board>-<rev>-g<count>`, and a
-push to origin.
+FABLOG.md row, a git commit, an annotated tag `<board>-<rev>-g<count>`
+(whitespace in the board name becomes `_`, so `Meridian 1590XX` tags as
+`Meridian_1590XX-3.0-g2`), and a push to origin.
 
 The revision on the board stays human-managed (`${REVISION}` silk resolved from
 the board's title block); the hooks only record, tag, and push — they never bump

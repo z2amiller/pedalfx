@@ -149,6 +149,7 @@ def test_is_valid_rev():
 
 def test_tag_and_commit_rendering():
     assert fabhooks.tag_name("fx-BloodySMD", "v0.1", "17") == "fx-BloodySMD-v0.1-g17"
+    assert fabhooks.tag_name("Meridian 1590XX", "3.0", "2") == "Meridian_1590XX-3.0-g2"
     assert (
         fabhooks.commit_message("fx-BloodySMD", "v0.1", "17")
         == "fx-BloodySMD v0.1 fab outputs (g17)"
@@ -370,9 +371,19 @@ def test_post_push_failure_keeps_local_state(tmp_path, capsys):
     assert fabhooks.tag_exists(repo, "fx-Test-v0.3-g7")  # local state preserved
 
 
+def test_post_board_name_with_spaces_tags_with_underscores(tmp_path, capsys):
+    repo, bare, env = _full_setup(tmp_path)
+    board = repo / "fx Spaced Name.kicad_pcb"
+    board.write_text(BOARD_WITH_REV, encoding="utf-8")
+    env["JLCPCB_BOARD_PATH"] = str(board)
+    assert post_generate.main(argv=[], env=env) == 0
+    assert fabhooks.tag_exists(repo, "fx_Spaced_Name-v0.3-g7")
+    assert "| fx Spaced Name | v0.3 | 7 |" in (repo / "FABLOG.md").read_text()
+
+
 def test_post_rejects_invalid_tag_name(tmp_path, capsys):
     repo, bare, env = _full_setup(tmp_path)
-    board = repo / "fx Bad Name.kicad_pcb"  # spaces -> illegal git ref
+    board = repo / "fx~Bad.kicad_pcb"  # "~" -> illegal git ref
     board.write_text(BOARD_WITH_REV, encoding="utf-8")
     env["JLCPCB_BOARD_PATH"] = str(board)
     assert post_generate.main(argv=[], env=env) == 1
