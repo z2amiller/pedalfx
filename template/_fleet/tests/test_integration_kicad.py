@@ -25,14 +25,19 @@ def drc(project):
 
 
 def test_kit_removes_pot_and_jack_noise(schwell, kit):
-    before = kicadcli.summarize(drc(schwell))
-    assert before.total > 200                                   # 306 at design time
+    silk = {"silk_edge_clearance", "silk_over_copper", "silk_overlap", "text_height"}
+    pots_and_jacks = r"\b(RV|J)\d+\b"
+    first = drc(schwell)
+    before = kicadcli.summarize(first)
+    # Gauge the noise the kit targets, not KiCad's raw total: up to 10.0.5 the silk check also
+    # collided with the pots' pot_drc rule areas (KiCad issue 24177, fixed in 10.0.6), which put the
+    # total at 306 then and 69 on 10.0.8.
+    assert kicadcli.involving(first, silk, pots_and_jacks) >= 40  # 61 on KiCad 10.0.8
     applymod.apply_project(schwell, kit, applymod.ApplyOptions(commands=[]))
     report = drc(schwell)
     after = kicadcli.summarize(report)
     assert after.total < before.total / 2
-    silk = {"silk_edge_clearance", "silk_over_copper", "silk_overlap", "text_height"}
-    assert kicadcli.involving(report, silk, r"\b(RV|J)\d+\b") == 0
+    assert kicadcli.involving(report, silk, pots_and_jacks) == 0
     assert after.by_type["courtyards_overlap"] == 0
     assert kicadcli.validate_rules(KICAD_CLI_DEFAULT, schwell.pro) == "ok"
 
