@@ -1,15 +1,16 @@
-"""pedal-fleet command line: check | apply | drc | new-template | clone | silk-labels."""
+"""pedal-fleet command line: check | apply | drc | new-template | clone | silk-labels | outline."""
 import argparse
 import difflib
 import json
 import subprocess
 import sys
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 from . import apply as applymod
 from . import clone as clonemod
-from . import gitutil, guard, kicadcli, projectfile, rules, silklabels
+from . import gitutil, guard, kicadcli, outline, projectfile, rules, silklabels
 from .discover import find_boards, find_templates, project_from_path
 from .kit import load_kit
 from .newtemplate import create_template
@@ -18,15 +19,16 @@ from .paths import DEFAULT_REPOS, KIT_DIR, TEMPLATES_ROOT
 COMMIT_MESSAGE = "pedal-fleet: apply fleet kit v{version}"
 
 
-def _add_target_args(parser):
+def _add_target_args(parser, kit=True):
     parser.add_argument("targets", nargs="*", help="project directories or .kicad_pro files")
     parser.add_argument("--templates", action="store_true", help="every template under the templates root")
     parser.add_argument("--boards", action="store_true", help="every board under the repos root")
     parser.add_argument("--all", action="store_true", help="--templates and --boards")
     parser.add_argument("--repos", type=Path, default=DEFAULT_REPOS)
     parser.add_argument("--templates-root", type=Path, default=TEMPLATES_ROOT)
-    parser.add_argument("--kit", type=Path, default=KIT_DIR)
-    parser.add_argument("--kicad-cli", default=None)
+    if kit:
+        parser.add_argument("--kit", type=Path, default=KIT_DIR)
+        parser.add_argument("--kicad-cli", default=None)
     parser.add_argument("--no-process-check", action="store_true",
                         help="do not look for running KiCad processes (tests)")
 
@@ -36,8 +38,9 @@ def build_parser():
                                      description="keep KiCad templates and boards on the fleet kit")
     sub = parser.add_subparsers(dest="verb", required=True)
 
-    check = sub.add_parser("check", help="report drift from the kit (read-only; exit 1 on drift)")
+    check = sub.add_parser("check", help="report drift from the kit and outline defects (read-only; exit 1 on either)")
     _add_target_args(check)
+    check.add_argument("--no-outline", action="store_true", help="skip the board-outline check")
 
     apply_ = sub.add_parser("apply", help="stamp the kit into projects")
     _add_target_args(apply_)
@@ -90,6 +93,15 @@ def build_parser():
     sl.add_argument("--kicad-cli", default=None)
     sl.add_argument("--force", action="store_true", help="proceed while KiCad runs (never with a lock file)")
     sl.add_argument("--no-process-check", action="store_true")
+
+    ol = sub.add_parser("outline",
+                        help="check board outlines (Edge.Cuts) for micro-gaps, stubs and split lines; --fix heals them")
+    _add_target_args(ol, kit=False)
+    ol.add_argument("--tol", type=float, default=outline.TOL,
+                    help="heal tolerance in mm: ends closer than this are joined, lines shorter than it dropped")
+    ol.add_argument("--fix", action="store_true", help="heal the outline and write the board")
+    ol.add_argument("--dry-run", action="store_true", help="print the planned edits as a diff, write nothing")
+    ol.add_argument("--force", action="store_true", help="proceed while KiCad runs (never with a lock file)")
     return parser
 
 
@@ -115,9 +127,26 @@ def _commands(args):
     return [] if args.no_process_check else None
 
 
+def _outline_defects(project) -> str:
+    """One-line summary of a board's outline defects for check, or ''."""
+    if not project.pcb.exists():
+        return ""
+    try:
+        result = outline.analyse(project.pcb.read_text(encoding="utf-8"))
+    except ValueError as error:
+        return f"OUTLINE: unreadable ({error})"
+    defects = result.defects()
+    if not defects:
+        return ""
+    kinds = Counter(f.kind for f in result.plan.findings if f.kind != "collinear")
+    names = {"open": "open end", "junction": "tangle"}
+    what = ", ".join(f"{count} {names.get(kind, kind)}(s)" for kind, count in sorted(kinds.items())) or defects[0]
+    return f"OUTLINE: {what} (see pedal-fleet outline)"
+
+
 def cmd_check(args, parser):
     kit = load_kit(args.kit)
-    drifted = 0
+    drifted = bad_outlines = 0
     projects = resolve_targets(args, parser)
     for project in projects:
         result = applymod.check_project(project, kit, commands=_commands(args))
@@ -128,10 +157,15 @@ def cmd_check(args, parser):
             flags.append(f"{result.stale_exclusions} exclusion(s) the kit now covers")
         status = "ok" if result.ok() else "DRIFT: " + "; ".join(result.drift)
         drifted += 0 if result.ok() else 1
+        defects = "" if args.no_outline else _outline_defects(project)
+        if defects:
+            bad_outlines += 1
+            status = defects if result.ok() else f"{status}; {defects}"
         suffix = f"  [{', '.join(flags)}]" if flags else ""
         print(f"{project.name:36s} {project.kind:9s} {status}{suffix}")
-    print(f"{len(projects)} projects, {len(projects) - drifted} in sync, {drifted} drifted")
-    return 1 if drifted else 0
+    tail = f", {bad_outlines} with outline defects" if bad_outlines else ""
+    print(f"{len(projects)} projects, {len(projects) - drifted} in sync, {drifted} drifted{tail}")
+    return 1 if drifted or bad_outlines else 0
 
 
 def _diff(old: str, new: str, name: str) -> str:
@@ -341,11 +375,84 @@ def cmd_silk_labels(args, parser):
     return 1 if failures else 0
 
 
+def _kicad_open(project, args) -> bool:
+    return any(path.exists() for path in project.lock_files) and guard.kicad_running(_commands(args))
+
+
+def _outline_one(project, args) -> str:
+    """Check (and with --fix or --dry-run, heal) one board. Returns clean | healed | findings | failed."""
+    text = project.pcb.read_text(encoding="utf-8")
+    try:
+        result = outline.analyse(text, args.tol)
+    except ValueError as error:
+        print(f"== {project.name}: cannot read the outline: {error}")
+        return "failed"
+    owners = sorted({shape.footprint for shape in result.shapes if shape.footprint})
+    footprint_shapes = len(result.shapes) - result.board_shapes
+    count = f"{result.board_shapes} Edge.Cuts shape(s)" + (
+        f" (+{footprint_shapes} in footprint(s) {', '.join(owners)}, read-only)" if owners else "")
+    stale = "  [open in KiCad: the file on disk may be stale]" if _kicad_open(project, args) else ""
+    if result.empty:
+        print(f"== {project.name}: no Edge.Cuts shapes, nothing to check{stale}")
+        return "clean"
+    if result.clean:
+        print(f"== {project.name}: {count}, clean; {result.closure.summary()}{stale}")
+        return "clean"
+    found = f"{len(result.plan.findings)} finding(s)" if result.plan.findings else "outline problem"
+    print(f"== {project.name}: {count}, {found}{stale}")
+    for finding in result.plan.findings:
+        print(f"   {finding.text}")
+    print(f"   as drawn: {result.closure.summary()}")
+    if result.healed is not None:
+        print(f"   healed:   {result.healed.summary()}")
+    if result.heals:
+        for finding in result.leftover:
+            print(f"   still left after healing: {finding.text}")
+    if not (args.fix or args.dry_run):
+        if result.heals:
+            print("   --fix heals this (--dry-run shows the diff)")
+        return "findings"
+    if not result.plan.changes:
+        print("   nothing to heal automatically; fix by hand")
+        return "failed"
+    if not result.heals:
+        print("   not written: the healed outline would still not close exactly")
+        return "failed"
+    edits = (f"{len(result.plan.moves)} end(s) moved, {len(result.plan.drops)} shape(s) removed")
+    if args.dry_run:
+        print(_diff(text, result.text, project.pcb.name), end="")
+        print(f"   nothing written (dry run): {edits}")
+        return "findings"
+    checked = guard.check_guard(project, force=args.force, commands=_commands(args))
+    if not checked.ok:
+        print(f"   not touched: {checked.reason}")
+        return "failed"
+    project.pcb.write_text(result.text, encoding="utf-8")
+    print(f"   wrote {project.pcb.name}: {edits}; open it in KiCad to review")
+    return "findings" if result.leftover else "healed"
+
+
+def cmd_outline(args, parser):
+    if args.tol < 0:
+        parser.error("--tol must not be negative")
+    projects = resolve_targets(args, parser)
+    outcomes = Counter()
+    for project in projects:
+        if not project.pcb.exists():
+            print(f"{project.name}: no board file, skipped")
+            continue
+        outcomes[_outline_one(project, args)] += 1
+    if len(projects) > 1:
+        print(f"{len(projects)} projects: {outcomes['clean']} clean, {outcomes['healed']} healed, "
+              f"{outcomes['findings']} with findings, {outcomes['failed']} need a hand fix or were not touched")
+    return 1 if outcomes["findings"] or outcomes["failed"] else 0
+
+
 def main(argv=None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     handlers = {"check": cmd_check, "apply": cmd_apply, "drc": cmd_drc, "new-template": cmd_new_template,
-                "clone": cmd_clone, "silk-labels": cmd_silk_labels}
+                "clone": cmd_clone, "silk-labels": cmd_silk_labels, "outline": cmd_outline}
     try:
         return handlers[args.verb](args, parser)
     except (FileNotFoundError, ValueError, RuntimeError) as error:
