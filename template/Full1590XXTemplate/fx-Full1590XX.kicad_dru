@@ -1,0 +1,26 @@
+(version 1)
+# --- pedalfx fleet rules v1 begin (managed by pedal-fleet; edit the kit, not this block) ---
+(rule "fleet: pot and jack silk may cross the edge, mask, copper and other silk"
+  (condition "A.hasComponentClass('Pot') || A.hasComponentClass('Jack') || B.hasComponentClass('Pot') || B.hasComponentClass('Jack')")
+  (constraint silk_clearance (min -1mm))
+  (severity ignore))
+(rule "fleet: pot pads sit 0.2 mm apart (Madbean 16 mm footprint)"
+  (condition "A.hasComponentClass('Pot')")
+  (constraint clearance (min 0.2mm)))
+(rule "fleet: jacks nest against each other (J102/J104 on the 125B templates)"
+  (condition "A.hasComponentClass('Jack') && B.hasComponentClass('Jack')")
+  (constraint courtyard_clearance (min -1mm))
+  (severity ignore))
+(rule "fleet: reference and value fields must print at JLCPCB"
+  (layer "?.Silkscreen")
+  (condition "A.Name == 'Reference' || A.Name == 'Value'")
+  (constraint text_height (min 0.8mm))
+  (constraint text_thickness (min 0.15mm)))
+(rule "fleet: Madbean pot text is 0.75 mm; tolerated"
+  (layer "?.Silkscreen")
+  (condition "A.hasComponentClass('Pot') && A.Type == 'Text'")
+  (constraint text_height (min 0.7mm)))
+(rule "fleet: no tall parts under a backpack"
+  (condition "A.insideArea('BACKPACK_KEEPOUT') && A.hasComponentClass('Tall')")
+  (constraint disallow footprint))
+# --- pedalfx fleet rules v1 end ---

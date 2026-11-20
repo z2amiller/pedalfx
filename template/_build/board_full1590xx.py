@@ -4,8 +4,9 @@ Rewrites a Full125-derived fx-Full1590XX.kicad_pcb in place:
 - removes the on-board power filter (D101/R101/L101/C101) and adds BP101, linked to its schematic symbol;
 - moves the jacks, DC jack, J101 and its LED D102 to the geometry.py positions; parts that serve one of those move
   with it, and the power cluster takes fx-BlueBlood's layout around the DC jack (clear of the backpack keepout);
-- replaces Edge.Cuts with fx-L7's top and sides plus a straight bottom at y 135, copies fx-L7's User.4 enclosure,
-  draws the User.2 hardware guides and the User.3 Tiny footswitch outlines;
+- replaces Edge.Cuts with fx-L7's top and sides plus a straight bottom at y 135, copies fx-L7's User.4 enclosure
+  (walls, pillars, bosses, R/L markers; not its leftover 125B dimensions), draws the User.2 hardware guides and the
+  User.3 Tiny footswitch outlines, and titles the board;
 - keeps Full125's GND zone (its settings) reshaped to the new board, and drops the 125B-specific net zones.
 
 usage: python3 board_full1590xx.py PROJECT_DIR BP101_SYMBOL_UUID
@@ -25,6 +26,8 @@ from pcbgen import MM, V, GenBoard, load_fp, mm  # noqa: E402
 L7 = Path.home() / "Documents/repos/fx-L7/fx-L7.kicad_pcb"
 SETUP_SHEET = "4a6baa1c-d138-4862-b9d0-d98ad688d686"
 PROJECT = "fx-Full1590XX"
+TITLE = "1590XX Full Board Setup"
+L7_MARKERS = ("R", "L")     # L7's player-side markers; its other User.4 texts label 125B dimensions it carried along
 U1, U2, U3, U4 = pcbnew.User_1, pcbnew.User_2, pcbnew.User_3, pcbnew.User_4
 EDGE = pcbnew.Edge_Cuts
 
@@ -219,9 +222,14 @@ def main():
             board.Delete(d)
     for t in list(board.GetTracks()):          # Full125's routing is for the 125B positions; the template ships unrouted
         board.Delete(t)
+    # L7's walls, lid-screw pillars and boss rectangles, and its R/L markers. Its eight dimensions are 125B
+    # screw/edge spacings (six at Full125's coordinates, two moved aside unchanged) and go, with their labels.
     for d in l7.GetDrawings():
-        if d.GetLayer() == U4:
-            board.Add(d.Duplicate().Cast())
+        if d.GetLayer() != U4 or d.GetClass().startswith("PCB_DIM"):
+            continue
+        if d.GetClass() == "PCB_TEXT" and d.GetText() not in L7_MARKERS:
+            continue
+        board.Add(d.Duplicate().Cast())
     outline(board, l7)
     guides(board)
 
@@ -237,6 +245,7 @@ def main():
         o.NewOutline()
         for px, py in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
             o.Append(MM(px), MM(py))
+    board.GetTitleBlock().SetTitle(TITLE)
     gb.save()
 
 

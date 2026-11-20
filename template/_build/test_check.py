@@ -100,6 +100,9 @@ def test_board_stage_passes_check(tmp_path):
     from gen_full1590xx import FLEET, PROJECT, build_board, build_sheets
     uuid = build_sheets(tmp_path)
     assert build_board(tmp_path, uuid) == []
+    pcb = (tmp_path / PROJECT / f"{PROJECT}.kicad_pcb").read_text()
+    assert '(title "1590XX Full Board Setup")' in pcb
+    assert "125B" not in pcb            # neither Full125's title nor L7's leftover 125B screw dimensions and labels
     out = subprocess.run(["uv", "run", "pedal-fleet", "outline", "--no-process-check", str(tmp_path / PROJECT)],
                          cwd=FLEET, capture_output=True, text=True).stdout
     assert "clean; closes exactly" in out
