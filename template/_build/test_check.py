@@ -61,6 +61,19 @@ def test_header_pin1_west(tmp_path):
     assert any("J101 pin 1 not west" in m for m in check(p))
 
 
+def test_sheets_bp101(tmp_path):
+    from check_full1590xx import _netlist_pins
+    from gen_full1590xx import build_sheets
+    uuid = build_sheets(tmp_path)
+    proj = tmp_path / "fx-Full1590XX"
+    pins = _netlist_pins(proj)
+    assert pins[("BP101", "P1")] == "+9V"
+    assert pins[("BP101", "P4")] == "+9VA"
+    assert not {ref for ref, _ in pins} & {"D101", "R101", "L101", "C101"}
+    assert f'(uuid "{uuid}")' in (proj / "board_setup.kicad_sch").read_text()
+    assert '(title "1590XX Full Board Setup")' in (proj / "fx-Full1590XX.kicad_sch").read_text()
+
+
 def test_led_body_centre(tmp_path):
     # D102 origin (pad 1) placed on the body centre: the body centre is then 1.27 mm off
     cx, cy, rot, layer = geometry.FOOTPRINTS["D102"]
