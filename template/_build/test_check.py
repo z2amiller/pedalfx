@@ -19,11 +19,14 @@ def test_tayda_map():
 
 
 def test_guides_complete():
-    assert len(geometry.GUIDES) == 12 + 4 + 3 + 3
+    assert len(geometry.GUIDES) == 12 + 4 + 3 + 3 + 2      # pots, row 3, footswitches, LEDs, side-C jacks
+    jacks = {round(x, 2): d for label, x, _y, d in geometry.GUIDES if "JACK" in label}
+    assert jacks == {109.5: 12.8, 185.5: 12.8}
 
 
 def test_header_pin1():
-    assert geometry.header_pin1(185.5) == pytest.approx((176.39, 133.03))
+    # util-TinyFootSwitch: header J4 centre 110.025, switch (B2) 109.8 -> the header sits 0.225 mm EAST of the switch
+    assert geometry.header_pin1(185.5) == pytest.approx((176.835, 133.03))
 
 
 def test_clearances_numeric():
@@ -39,6 +42,7 @@ def test_check_fails_on_full125():
     text = "\n".join(msgs)
     assert "User.2 guide missing" in text
     assert "J104 position" in text
+    assert "User.2 DC jack guide missing" in text
 
 
 def _board(*footprints):
@@ -106,3 +110,12 @@ def test_board_stage_passes_check(tmp_path):
     out = subprocess.run(["uv", "run", "pedal-fleet", "outline", "--no-process-check", str(tmp_path / PROJECT)],
                          cwd=FLEET, capture_output=True, text=True).stdout
     assert "clean; closes exactly" in out
+
+
+def test_zone_fill_outside_outline(tmp_path):
+    # a GND pour still carrying Full125's 125B fill (down to y 142.5) past the 1590XX bottom edge at y 135
+    zone = ('\t(zone\n\t\t(net "GND")\n\t\t(layers "F.Cu" "B.Cu")\n\t\t(filled_polygon\n\t\t\t(layer "F.Cu")\n'
+            '\t\t\t(pts\n\t\t\t\t(xy 81.5 43.5) (xy 138.5 43.5) (xy 138.5 142.5) (xy 81.5 142.5)\n\t\t\t)\n\t\t)\n\t)\n')
+    p = tmp_path / "b.kicad_pcb"
+    p.write_text(_board(zone))
+    assert any("zone fill outside the outline" in m for m in check(p))

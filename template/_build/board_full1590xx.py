@@ -122,6 +122,9 @@ def guides(board):
     for label, x, y, d in G.GUIDES:
         circle(board, U2, (x, y), d / 2)
         text(board, U2, label, x, y - d / 2 - 1.2, 0.8)
+    x0, y0, x1, y1 = G.DC_GUIDE
+    rect(board, U2, (x0, y0), (x1, y1))
+    text(board, U2, "DC JACK side C Y-5..+5", (x0 + x1) / 2, y0 - 1.2, 0.8)
     cx, cy = G.CENTRE
     line(board, U2, (G.OUTLINE_BBOX[0] - 5, cy), (G.OUTLINE_BBOX[1] + 5, cy))
     line(board, U2, (cx, G.OUTLINE_BBOX[2] - 5), (cx, G.SWITCH_Y + 12))
@@ -246,6 +249,7 @@ def main():
         for px, py in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
             o.Append(MM(px), MM(py))
     board.GetTitleBlock().SetTitle(TITLE)
+    gb.fill_zones()                               # else the saved pour is Full125's 125B fill
     gb.save()
 
 

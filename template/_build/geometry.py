@@ -34,9 +34,11 @@ SWITCH_X = tuple(tayda_to_board(SWITCH_X_TAYDA, y)[0] for y in SWITCH_TAYDA_Y)  
 SWITCH_Y = tayda_to_board(SWITCH_X_TAYDA, 0.0)[1]                                 # 145.75
 LED_Y = tayda_to_board(LED_X_TAYDA, 0.0)[1]                                       # 128.15
 
-# Tiny footswitch board: header row 12.72 mm north of the switch centre; on the main board the header centre sits
-# 0.22 mm WEST of the switch (Full125's J101: pin 1 100.94, centre 109.83, switch 110.05).
-TINY_HEADER_DY, HEADER_DX, PITCH, PINS = 12.72, -0.22, 2.54, 8
+# Tiny footswitch board (util-TinyFootSwitch): header J4 row 12.72 mm north of the switch centre (B2), header centre
+# 0.225 mm EAST of it (J4 centre 110.025, B2 109.8). Both boards run JACK_IN..JACK_OUT west to east in their own
+# views, so the main board takes the Tiny's offset unmirrored. (Full125's and fx-Electro's J101s sit ~0.45 mm west of
+# this; the fx-Electro spec lists the nudge east as a follow-up.)
+TINY_HEADER_DY, HEADER_DX, PITCH, PINS = 12.72, 0.225, 2.54, 8
 HEADER_Y = round(SWITCH_Y - TINY_HEADER_DY, 4)                                    # 133.03
 HEADER_PAD = 1.7
 TINY_BOX = (-9.95, -14.72, 9.95, 8.53)    # Tiny outline about the switch centre, x widened to the larger side
@@ -53,6 +55,13 @@ def header_pin1(switch_x: float) -> tuple:
 BOTTOM_Y = 135.0
 OUTLINE_BBOX = (81.05, 215.05, 42.95, BOTTOM_Y)             # xmin, xmax, ymin, ymax
 SIDE_END_Y = 134.0                                          # side edges stop here, 1 mm corner to the bottom
+
+# Side C (the top wall) on L7's Tayda file: jacks Ø 12.8 at Y +38 (input) and -38 (output); the DC hole is a
+# rectangle Y -5..+5 (and side-C x -9.3..2.9, 12.2 mm tall). Drawn at their board x, centred on the top edge.
+TOP_Y = OUTLINE_BBOX[2]
+for _y, _name in ((38.0, "INPUT"), (-38.0, "OUTPUT")):
+    GUIDES.append((f"{_name} JACK side C Y{_y:+g}", tayda_to_board(0.0, _y)[0], TOP_Y, 12.8))
+DC_GUIDE = (CENTRE[0] - 5.0, TOP_Y - 6.1, CENTRE[0] + 5.0, TOP_Y + 6.1)     # x0, y0, x1, y1
 
 # ref -> (x, y, rot, layer); D102 is its BODY CENTRE (pad 1 is 1.27 mm east at rot 180 on B.Cu)
 FOOTPRINTS = {

@@ -115,6 +115,12 @@ def check(pcb_path, project_dir=None) -> list:
     for label, x, y, d in G.GUIDES:
         if not any(math.dist(c, (x, y)) <= TOL and abs(r - d / 2) <= TOL for c, r in circles):
             fail.append(f"User.2 guide missing: {label} at ({x}, {y}) dia {d}")
+    x0, y0, x1, y1 = G.DC_GUIDE
+    rects = [(min(p["start"][0], p["end"][0]), min(p["start"][1], p["end"][1]),
+              max(p["start"][0], p["end"][0]), max(p["start"][1], p["end"][1]))
+             for k, p in _graphics(items, "User.2") if k == "gr_rect"]
+    if not any(all(abs(a - b) <= TOL for a, b in zip(r, (x0, y0, x1, y1))) for r in rects):
+        fail.append(f"User.2 DC jack guide missing: rect {G.DC_GUIDE}")
 
     # key footprints
     for ref, (x, y, rot, layer) in G.FOOTPRINTS.items():
@@ -190,6 +196,16 @@ def check(pcb_path, project_dir=None) -> list:
                 d = _pt_box(led, tb) - G.LED_FLANGE_R
                 if d < G.CLEAR["led_toggle"]:
                     fail.append(f"LED at x {sx} flange {d:.2f} mm from toggle {label}")
+
+    # zone fills: a pour saved without a refill keeps its old board's fill
+    ox0, ox1, oy0, oy1 = G.OUTLINE_BBOX
+    for b in items:
+        if b.startswith("(zone"):
+            for fp in re.findall(r"\(filled_polygon(.*?)\n\t\t\)", b, re.S):
+                pts = [(float(x), float(y)) for x, y in re.findall(r"\(xy ([-\d.]+) ([-\d.]+)\)", fp)]
+                if any(not (ox0 - TOL <= x <= ox1 + TOL and oy0 - TOL <= y <= oy1 + TOL) for x, y in pts):
+                    fail.append("zone fill outside the outline (saved without a refill?)")
+                    break
 
     # nets
     if project_dir is not None:
