@@ -61,6 +61,17 @@ def test_header_pin1_west(tmp_path):
     assert any("J101 pin 1 not west" in m for m in check(p))
 
 
+def test_pillar_ignores_enclosure_outline(tmp_path):
+    # L7's User.4 holds the whole enclosure rectangle (reaching y 160.7) as well as the corner bosses; only the
+    # bosses (everything below y 150) count as pillars
+    def gr_rect(a, b):
+        return (f'\t(gr_rect\n\t\t(start {a[0]} {a[1]})\n\t\t(end {b[0]} {b[1]})\n\t\t(stroke\n\t\t\t(width 0.1)\n'
+                f'\t\t\t(type default)\n\t\t)\n\t\t(fill no)\n\t\t(layer "User.4")\n\t)\n')
+    p = tmp_path / "b.kicad_pcb"
+    p.write_text(_board(gr_rect((78.7, 41.0), (217.2, 160.7)), gr_rect((79.72, 153.17), (84.78, 159.65))))
+    assert not any("pillar boss" in m for m in check(p))
+
+
 def test_sheets_bp101(tmp_path):
     from check_full1590xx import _netlist_pins
     from gen_full1590xx import build_sheets
@@ -80,3 +91,15 @@ def test_led_body_centre(tmp_path):
     p = tmp_path / "b.kicad_pcb"
     p.write_text(_board(_fp("D102", "LED_THT:LED_D5.0mm", layer, cx, cy, rot, [("1", 0, 0), ("2", 2.54, 0)])))
     assert any("D102 body centre" in m for m in check(p))
+
+
+def test_board_stage_passes_check(tmp_path):
+    # the whole build: sheets, then the board under KiCad's python, then the outline heal; the checker must pass and
+    # the fleet's outline audit must find nothing left to heal (fx-L7's top edge has a collinear pair)
+    import subprocess
+    from gen_full1590xx import FLEET, PROJECT, build_board, build_sheets
+    uuid = build_sheets(tmp_path)
+    assert build_board(tmp_path, uuid) == []
+    out = subprocess.run(["uv", "run", "pedal-fleet", "outline", "--no-process-check", str(tmp_path / PROJECT)],
+                         cwd=FLEET, capture_output=True, text=True).stdout
+    assert "clean; closes exactly" in out

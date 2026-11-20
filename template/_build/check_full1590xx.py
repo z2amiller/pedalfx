@@ -155,7 +155,8 @@ def check(pcb_path, project_dir=None) -> list:
         bottom = bbox[3]
 
     # clearances
-    pillars = [(k, d) for k, d in _graphics(items, "User.4") if any(p[1] > 150 for p in d.values())]
+    # bottom pillar bosses: User.4 items lying wholly below y 150 (not the enclosure outline that spans the box)
+    pillars = [(k, d) for k, d in _graphics(items, "User.4") if d and all(p[1] > 150 for p in d.values())]
     for sx in G.SWITCH_X:
         tb = (sx + G.TINY_BOX[0], G.SWITCH_Y + G.TINY_BOX[1], sx + G.TINY_BOX[2], G.SWITCH_Y + G.TINY_BOX[3])
         if not pillars:

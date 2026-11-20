@@ -4,13 +4,14 @@
 Stages:
   sheets  clone Full125Template, upgrade the sheets to KiCad 10, swap the on-board power filter for the BP101
           power-backpack connector (fx-BlueBlood's edit) and title the root sheet.
-  board   rewrite the board with fx-L7's 1590XX mechanics (board_full1590xx.py, under KiCad's python).
-  all     both, then check_full1590xx.py.
+  board   rewrite the board with fx-L7's 1590XX mechanics (board_full1590xx.py, under KiCad's python), heal the
+          outline with the fleet's fixer, then run check_full1590xx.py (needs --bp101-uuid from a sheets run).
+  all     both.
 
 Spec: ~/Claude/docs/superpowers/specs/2026-11-19-1590xx-template-design.md.  Install the result with
 `pedal-fleet new-template` (see the plan).
 
-usage: gen_full1590xx.py --scratch DIR [--stage sheets|board|all]
+usage: gen_full1590xx.py --scratch DIR [--stage sheets|board|all] [--bp101-uuid UUID]
 """
 import argparse
 import math
@@ -26,6 +27,8 @@ sys.path.insert(0, str(TEMPLATES.parent / "boardgen"))
 import kisch  # noqa: E402
 
 KICAD_CLI = "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
+KICAD_PYTHON = "/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3"
+# (pcbgen.KICAD_PYTHON's value: pcbgen itself imports pcbnew, which this stdlib script cannot)
 FULL125 = TEMPLATES / "Full125Template"
 FLEET = TEMPLATES / "_fleet"
 PROJECT = "fx-Full1590XX"
@@ -299,13 +302,36 @@ def build_sheets(scratch: Path) -> str:
     return bp
 
 
+def build_board(scratch: Path, bp101_uuid: str) -> list:
+    """Rewrite scratch/fx-Full1590XX's board for the 1590XX and return check_full1590xx's failures (empty = pass).
+
+    fx-L7's top edge, copied verbatim, has two collinear segments; the fleet's own outline fixer merges them so new
+    boards start with a clean outline audit."""
+    from check_full1590xx import check
+    proj = Path(scratch) / PROJECT
+    _run([KICAD_PYTHON, str(HERE / "board_full1590xx.py"), str(proj), bp101_uuid])
+    _run(["uv", "run", "pedal-fleet", "outline", "--fix", "--no-process-check", str(proj)], cwd=FLEET)
+    return check(proj / f"{PROJECT}.kicad_pcb", proj)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--scratch", required=True, type=Path)
     ap.add_argument("--stage", choices=["sheets", "board", "all"], default="all")
+    ap.add_argument("--bp101-uuid", help="BP101's symbol uuid, printed by the sheets stage (board stage alone)")
     a = ap.parse_args()
+    uuid = a.bp101_uuid
     if a.stage in ("sheets", "all"):
-        print("BP101 uuid", build_sheets(a.scratch))
+        uuid = build_sheets(a.scratch)
+        print("BP101 uuid", uuid)
+    if a.stage in ("board", "all"):
+        if not uuid:
+            ap.error("--stage board needs --bp101-uuid")
+        fail = build_board(a.scratch, uuid)
+        for f in fail:
+            print("FAIL", f)
+        print("check:", "FAIL" if fail else "PASS", f"({len(fail)} failures)")
+        sys.exit(1 if fail else 0)
 
 
 if __name__ == "__main__":
