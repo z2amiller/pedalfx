@@ -102,9 +102,54 @@ def check_face(text, holes, leds, labels=None, frames=None):
     return msgs
 
 
+LABEL_CLEAR = 0.75
+
+
+def board_pots(board_text):
+    """(ref, Control, shaft x, shaft y) of every 16MM_B.MOUNT pot on a main board, in board coordinates. The shaft
+    sits 16 mm north of the footprint anchor (the centre pin); only unrotated pots are supported."""
+    out = []
+    for item in _items(board_text):
+        if not item.startswith("(footprint") or "16MM_B.MOUNT" not in item.split("\n", 1)[0]:
+            continue
+        at = re.search(r'^\t\t\(at (-?[\d.]+) (-?[\d.]+)(?: (-?[\d.]+))?\)', item, re.M)
+        if at.group(3) and float(at.group(3)) % 360:
+            raise ValueError("rotated pot: " + item[:80])
+        ref = re.search(r'\(property "Reference" "([^"]+)"', item).group(1)
+        ctl = re.search(r'\(property "Control" "([^"]*)"', item)
+        out.append((ref, ctl.group(1) if ctl else ref, float(at.group(1)), float(at.group(2)) - 16.0))
+    return sorted(out)
+
+
+def _box_in_poly(box, poly, m):
+    """True when the box grown by m lies inside the (rectilinear) polygon and no vertex pokes into it."""
+    x0, y0, x1, y1 = box[0] - m, box[1] - m, box[2] + m, box[3] + m
+    corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    return all(_inside(c, poly) for c in corners) and not any(x0 < px < x1 and y0 < py < y1 for px, py in poly)
+
+
+def _box_circle_gap(box, c, r):
+    dx = max(box[0] - c[0], 0.0, c[0] - box[2])
+    dy = max(box[1] - c[1], 0.0, c[1] - box[3])
+    return math.hypot(dx, dy) - r
+
+
 def _check_labels(items, labels, frames):
-    """Placeholder for Task 3: label text, frame containment and hole clearance."""
-    return []
+    """labels: (text, x0, y0, x1, y1) as measured on the saved board; frames: the frame polygons (unfilleted)."""
+    msgs = []
+    texts = {re.match(r'\(gr_text "((?:[^"\\]|\\.)*)"', i).group(1) for i in items
+             if i.startswith("(gr_text") and _layer(i) == "F.SilkS"}
+    holes = [(x, y) for x, y, r in (_circle(i) for i in items if i.startswith("(gr_circle") and _layer(i) == "Edge.Cuts")
+             if abs(r - HOLE_R) < 0.05]
+    for text, *box in labels:
+        if text not in texts:
+            msgs.append(f"label {text!r} is not on F.SilkS")
+        if frames and not any(_box_in_poly(box, poly, LABEL_CLEAR) for poly in frames):
+            msgs.append(f"label {text!r} is not inside a frame with {LABEL_CLEAR} mm to spare")
+        for h in holes:
+            if _box_circle_gap(box, h, HOLE_R) < LABEL_CLEAR:
+                msgs.append(f"label {text!r} is within {LABEL_CLEAR} mm of the hole at ({h[0]:.2f}, {h[1]:.2f})")
+    return msgs
 
 
 def main():

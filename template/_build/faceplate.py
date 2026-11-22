@@ -66,6 +66,19 @@ def stepped_outline(rects: list) -> list:
     return pts
 
 
+COLUMNS = sorted({x for x, _y in TEMPLATE_HOLES})
+ROWS = sorted({y for _x, y in TEMPLATE_HOLES})
+
+
+def frame_for(points: list) -> list:
+    """The stepped frame around a group of knobs given as face (x, y). Each knob snaps to the template grid first,
+    so a pot a fraction of a millimetre off its column can't put a tiny step (and a looped fillet) in the frame."""
+    rows = {}
+    for x, y in points:
+        rows.setdefault(min(ROWS, key=lambda r: abs(r - y)), []).append(min(COLUMNS, key=lambda c: abs(c - x)))
+    return stepped_outline(frame_rects(sorted(rows.items())))
+
+
 def fillet(points: list, r: float) -> list:
     """Round every corner of a closed polygon with radius r: ('line', a, b) and ('arc', start, mid, end) items.
     The arc is tangent to both edges, so one rule rounds convex and concave corners alike."""
@@ -83,6 +96,11 @@ def fillet(points: list, r: float) -> list:
         corners.append(((p[0] + u1[0] * t, p[1] + u1[1] * t),
                         (centre[0] - bis[0] * r, centre[1] - bis[1] * r),
                         (p[0] + u2[0] * t, p[1] + u2[1] * t)))
+    for i, (_t1, _m, t2) in enumerate(corners):
+        nxt = corners[(i + 1) % n][0]
+        edge = (points[(i + 1) % n][0] - points[i][0], points[(i + 1) % n][1] - points[i][1])
+        if (nxt[0] - t2[0]) * edge[0] + (nxt[1] - t2[1]) * edge[1] < -1e-9:
+            raise ValueError(f"edge from {points[i]} is too short for r {r}: the fillets would overlap")
     items = []
     for i, (t1, mid, t2) in enumerate(corners):
         items.append(('arc', t1, mid, t2))

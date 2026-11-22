@@ -1,0 +1,179 @@
+"""Build a 1590XX faceplate project and its Tayda drill list from a main board (KiCad python, pcbnew).
+
+usage: face_1590xx.py BOARD OUT_DIR NAME --title TEXT [--supply TEXT] --frame REFS [--frame REFS ...] [--report JSON]
+
+Spec: ~/Claude/docs/superpowers/specs/2026-11-21-revolver-faceplate-design.md. Starts from the 1590XX faceplate
+template (pedalfx/template/1950XXFacePlate) and, from the board's own 16MM_B.MOUNT pots:
+- drills a hole (Edge.Cuts r 4.0) on every pot shaft (the drills follow the pots, Andy's 1590XX rule);
+- labels each pot with its Control field 12.25 mm below the hole, in the template's CONTROL text style, narrowing a
+  label's characters (down to 1.8 mm) only when it would come within 0.75 mm of its frame or a hole;
+- draws an exposed-copper (F.Mask) frame around each --frame group, stepped to the rows it occupies;
+- sets the title and supply text, refills the copper, saves, writes NAME-tayda-drill.txt and checks the result.
+"""
+import argparse
+import json
+import math
+import shutil
+import sys
+from pathlib import Path
+
+import pcbnew
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import faceplate as F  # noqa: E402
+import geometry as G  # noqa: E402
+from check_face1590xx import HOLE_R, LABEL_CLEAR, _box_circle_gap, _box_in_poly, board_pots, check_face  # noqa: E402
+from fix_face1590xx import NM, is_circle, mm, v  # noqa: E402
+
+TEMPLATE_DIR, TEMPLATE = HERE.parent / "1950XXFacePlate", "1950XXFacePlate"
+MIN_CHAR_W = 1.8            # Andy's call to make: 'BOOST GAIN' needs ~1.85 mm to fit 18.5 mm (2026-11-21 ruling)
+
+
+def copy_project(out_dir: Path, name: str) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for ext in (".kicad_sch", ".kicad_dru"):
+        shutil.copy(TEMPLATE_DIR / (TEMPLATE + ext), out_dir / (name + ext))
+    pro = json.loads((TEMPLATE_DIR / (TEMPLATE + ".kicad_pro")).read_text())
+    pro.setdefault("meta", {})["filename"] = name + ".kicad_pro"
+    (out_dir / (name + ".kicad_pro")).write_text(json.dumps(pro, indent=2) + "\n")
+    shutil.copy(TEMPLATE_DIR / ".gitignore", out_dir / ".gitignore")
+
+
+def frame_poly(group):
+    """The stepped outline around a group of pots, drawn on the template grid (faceplate.frame_for)."""
+    return F.frame_for([(F.face_x(sx), sy) for _ref, _ctl, sx, sy in group])
+
+
+def draw_frame(board, poly) -> None:
+    for item in F.fillet(poly, F.FRAME_R):
+        s = pcbnew.PCB_SHAPE(board)
+        s.SetLayer(pcbnew.F_Mask)
+        s.SetWidth(int(F.FRAME_W * NM))
+        if item[0] == "line":
+            s.SetShape(pcbnew.SHAPE_T_SEGMENT)
+            s.SetStart(v(*item[1]))
+            s.SetEnd(v(*item[2]))
+        else:
+            s.SetShape(pcbnew.SHAPE_T_ARC)
+            s.SetArcGeometry(v(*item[1]), v(*item[2]), v(*item[3]))
+        board.Add(s)
+
+
+def set_holes(board, holes) -> None:
+    old = [d for d in board.GetDrawings() if is_circle(d, pcbnew.Edge_Cuts, HOLE_R)]
+    width = old[0].GetWidth()
+    for d in old:
+        board.Delete(d)
+    for x, y in holes:
+        c = pcbnew.PCB_SHAPE(board)
+        c.SetShape(pcbnew.SHAPE_T_CIRCLE)
+        c.SetLayer(pcbnew.Edge_Cuts)
+        c.SetStart(v(x, y))
+        c.SetEnd(v(x + HOLE_R, y))
+        c.SetWidth(width)
+        board.Add(c)
+
+
+def box(t):
+    b = t.GetBoundingBox()
+    return (b.GetLeft() / NM, b.GetTop() / NM, b.GetRight() / NM, b.GetBottom() / NM)
+
+
+def fits(t, poly, holes) -> bool:
+    b = box(t)
+    return (poly is None or _box_in_poly(b, poly, LABEL_CLEAR)) and all(
+        _box_circle_gap(b, h, HOLE_R) >= LABEL_CLEAR for h in holes)
+
+
+def place_labels(board, pots, poly_of, holes):
+    """Fill the CONTROL placeholders, nearest first; return the labels whose characters had to be narrowed."""
+    spare = [d for d in board.GetDrawings() if d.GetClass() == "PCB_TEXT" and d.GetText() == "CONTROL"]
+    narrowed = []
+    for ref, ctl, sx, sy in sorted(pots, key=lambda p: (p[3], F.face_x(p[2]))):
+        at = (F.face_x(sx), sy + F.LABEL_DY)
+        t = min(spare, key=lambda d: math.hypot(mm(d.GetPosition())[0] - at[0], mm(d.GetPosition())[1] - at[1]))
+        spare.remove(t)
+        t.SetText(ctl)
+        t.SetPosition(v(*at))
+        full = t.GetTextWidth()
+        while not fits(t, poly_of.get(ref), holes):
+            w = round(t.GetTextWidth() / NM - 0.1, 2)
+            if w < MIN_CHAR_W - 1e-9:
+                sys.exit(f"label {ctl!r} ({ref}) does not fit even at {MIN_CHAR_W} mm characters")
+            t.SetTextWidth(int(round(w * NM)))
+        if t.GetTextWidth() != full:
+            narrowed.append((ref, ctl, t.GetTextWidth() / NM))
+    for d in spare:
+        board.Delete(d)
+    return narrowed
+
+
+def set_text(board, old: str, new: str) -> None:
+    hits = [d for d in board.GetDrawings() if d.GetClass() == "PCB_TEXT" and d.GetText() == old]
+    if len(hits) != 1:
+        sys.exit(f"expected one {old!r} text in the template, found {len(hits)}")
+    hits[0].SetText(new)
+
+
+def measured_labels(pcb_path: Path, pots):
+    """(text, x0, y0, x1, y1) of each pot's label on the SAVED board, found by position (texts repeat)."""
+    saved = pcbnew.LoadBoard(str(pcb_path))
+    texts = [d for d in saved.GetDrawings() if d.GetClass() == "PCB_TEXT" and d.GetLayer() == pcbnew.F_SilkS]
+    out = []
+    for _ref, ctl, sx, sy in pots:
+        at = (F.face_x(sx), sy + F.LABEL_DY)
+        t = min(texts, key=lambda d: math.hypot(mm(d.GetPosition())[0] - at[0], mm(d.GetPosition())[1] - at[1]))
+        out.append([t.GetText(), *box(t)])
+    return out
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("board")
+    ap.add_argument("out_dir")
+    ap.add_argument("name")
+    ap.add_argument("--title", required=True)
+    ap.add_argument("--supply", default=None)
+    ap.add_argument("--frame", action="append", default=[], help="comma-separated pot refs drawn inside one frame")
+    ap.add_argument("--report", default=None)
+    a = ap.parse_args()
+
+    pots = board_pots(Path(a.board).read_text())
+    by_ref = {p[0]: p for p in pots}
+    groups = [[by_ref[r.strip()] for r in g.split(",")] for g in a.frame]
+    polys = [frame_poly(g) for g in groups]
+    poly_of = {p[0]: poly for g, poly in zip(groups, polys) for p in g}
+    holes = [(F.face_x(sx), sy) for _r, _c, sx, sy in pots]
+
+    out_dir = Path(a.out_dir)
+    copy_project(out_dir, a.name)
+    board = pcbnew.LoadBoard(str(TEMPLATE_DIR / (TEMPLATE + ".kicad_pcb")))
+    set_holes(board, holes)
+    narrowed = place_labels(board, pots, poly_of, holes)
+    for poly in polys:
+        draw_frame(board, poly)
+    set_text(board, "PEDALNAME", a.title)
+    if a.supply:
+        set_text(board, "9 VDC", a.supply)
+    pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    pcb = out_dir / (a.name + ".kicad_pcb")
+    board.Save(str(pcb))
+
+    drill = out_dir / (a.name + "-tayda-drill.txt")
+    drill.write_text("\n".join(F.tayda_lines([(sx, sy) for _r, _c, sx, sy in pots], list(G.SWITCH_TAYDA_Y))) + "\n")
+
+    labels = measured_labels(pcb, pots)
+    msgs = check_face(pcb.read_text(), holes, F.LED_FACE, labels=labels, frames=polys)
+    if a.report:
+        Path(a.report).write_text(json.dumps({"pots": pots, "labels": labels, "frames": polys, "holes": holes}))
+    for ref, ctl, w in narrowed:
+        print(f"narrowed {ref} {ctl!r} to {w:.1f} mm characters")
+    for m in msgs:
+        print("FAIL", m)
+    print("wrote", pcb, "and", drill, "-", "PASS" if not msgs else f"{len(msgs)} failure(s)")
+    sys.exit(1 if msgs else 0)
+
+
+if __name__ == "__main__":
+    main()
