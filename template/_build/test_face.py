@@ -41,3 +41,41 @@ def test_tayda_lines():
     assert lines[0] == 'A\t8.2\t-38.0\t-55.0'                          # Tayda's own format keeps one decimal
     assert 'A\t12.4\t45.0\t0.0' in lines and 'A\t5.2\t27.4\t38.0' in lines
     assert lines[-1].startswith('C\t0\t')                               # side C copied last
+
+
+# --- Task 2: the faceplate template ------------------------------------------------------------------------------
+import subprocess  # noqa: E402
+
+TEMPLATE = HERE.parent / "1950XXFacePlate" / "1950XXFacePlate.kicad_pcb"
+REPO = HERE.parent.parent
+
+
+def _template_messages():
+    from check_face1590xx import check_face
+    return check_face(TEMPLATE.read_text(), faceplate.TEMPLATE_HOLES, faceplate.LED_FACE)
+
+
+def test_template_holes_exact():
+    assert [m for m in _template_messages() if "hole" in m] == []
+
+
+def test_template_trefoils():
+    assert [m for m in _template_messages() if "trefoil" in m] == []
+
+
+def test_template_no_125b():
+    msgs = _template_messages()
+    assert [m for m in msgs if "125B" in m or "User.4" in m] == []
+
+
+def test_template_fill_current():
+    assert [m for m in _template_messages() if "fill" in m] == []
+
+
+def test_check_face_flags_old_template():
+    from check_face1590xx import check_face
+    old = subprocess.run(["git", "show", "ee40ad0:template/1950XXFacePlate/1950XXFacePlate.kicad_pcb"],
+                         cwd=REPO, capture_output=True, text=True, check=True).stdout
+    msgs = " | ".join(check_face(old, faceplate.TEMPLATE_HOLES, faceplate.LED_FACE))
+    for word in ("hole", "trefoil", "125B", "fill"):
+        assert word in msgs
