@@ -127,7 +127,7 @@ def test_face_labels_clear(built):
     from check_face1590xx import board_pots, check_face
     pots = board_pots(REVOLVER.read_text())
     rep = built["report"]
-    assert sorted(lab[0] for lab in rep["labels"]) == sorted(ctl for _r, ctl, _x, _y in pots)
+    assert sorted(lab[0].replace("\n", " ") for lab in rep["labels"]) == sorted(ctl for _r, ctl, _x, _y in pots)
     holes = [(faceplate.face_x(sx), sy) for _ref, _ctl, sx, sy in pots]
     msgs = check_face(built["text"], holes, faceplate.LED_FACE, labels=rep["labels"], frames=rep["frames"])
     assert msgs == []
@@ -147,3 +147,83 @@ def test_face_tayda(built):
     assert sum(1 for line in lines if line.startswith("A\t12.4\t")) == 3
     assert sum(1 for line in lines if line.startswith("A\t5.2\t")) == 3
     assert "A\t8.2\t-37.92\t54.91" in lines                            # RV201, shaft (92.59, 62.83)
+
+
+
+# --- Final-review fix pass: two-line fallback, overwrite guard, hardware read from the board ------------------------
+from check_full1590xx import _items  # noqa: E402
+
+
+def _build(board: Path, out: Path, *extra):
+    return subprocess.run([KICAD_PYTHON, str(HERE / "face_1590xx.py"), str(board), str(out), out.name,
+                           "--title", "T", "--frame", PHARMACIST, "--frame", MOCKER, *extra],
+                          capture_output=True, text=True)
+
+
+def _variant(tmp_path: Path, edit) -> Path:
+    """A copy of the fx-Revolver board with one footprint block edited (edit(ref, block) -> new block or None)."""
+    if not REVOLVER.exists():
+        pytest.skip("fx-Revolver board not on this machine")
+    text = REVOLVER.read_text()
+    for item in _items(text):
+        if item.startswith("(footprint"):
+            ref = item.split('(property "Reference" "', 1)[1].split('"', 1)[0]
+            new = edit(ref, item)
+            if new is not None and new != item:
+                text = text.replace(item, new)
+            elif new is None:
+                text = text.replace("\n\t" + item, "")
+    board = tmp_path / "variant.kicad_pcb"
+    board.write_text(text)
+    return board
+
+
+def test_face_two_line_fallback(built):
+    text = built["text"]
+    i = text.index('(gr_text "BOOST\\nGAIN"')
+    block = text[i:text.index("(render_cache", i)]
+    assert "(size 2.5 2.25)" in block and "justify bottom" not in block      # full size, centred (Andy's edit)
+
+
+def test_builder_refuses_existing(built):
+    before = (built["out"] / "face-Revolver.kicad_pcb").read_text()
+    run = _build(REVOLVER, built["out"])
+    assert run.returncode != 0 and "exists" in run.stdout + run.stderr
+    assert (built["out"] / "face-Revolver.kicad_pcb").read_text() == before
+
+
+def test_builder_refuses_locked(tmp_path):
+    if not REVOLVER.exists():
+        pytest.skip("fx-Revolver board not on this machine")
+    out = tmp_path / "face-X"
+    out.mkdir()
+    (out / "~face-X.kicad_pcb.lck").write_text("{}")
+    run = _build(REVOLVER, out, "--force")
+    assert run.returncode != 0 and "open in KiCad" in run.stdout + run.stderr
+    assert not (out / "face-X.kicad_pcb").exists()
+
+
+def test_builder_two_switch(tmp_path):
+    board = _variant(tmp_path, lambda ref, b: None if ref == "D110" else b)       # drop the centre LED
+    out = tmp_path / "face-Two"
+    run = _build(board, out)
+    assert run.returncode == 0, run.stdout + run.stderr
+    lines = (out / "face-Two-tayda-drill.txt").read_text().splitlines()
+    assert [ln for ln in lines if ln.startswith(("A\t12.4", "A\t5.2"))] == [
+        "A\t12.4\t45.0\t-38.0", "A\t12.4\t45.0\t38.0", "A\t5.2\t27.4\t-38.0", "A\t5.2\t27.4\t38.0"]
+    from check_face1590xx import check_face
+    msgs = check_face((out / "face-Two.kicad_pcb").read_text(), [], [(112.5, 128.15), (188.5, 128.15)])
+    assert [m for m in msgs if "trefoil" in m] == []
+
+
+def test_builder_rejects_row3_pot(tmp_path):
+    board = _variant(tmp_path, lambda ref, b: b.replace("(at 114.75 104.145106)", "(at 114.75 129.75)")
+                     if ref == "RV202" else b)
+    run = _build(board, tmp_path / "face-Row3")
+    assert run.returncode != 0 and "row" in (run.stdout + run.stderr).lower()
+
+
+def test_builder_rejects_unknown_panel_part(tmp_path):
+    board = _variant(tmp_path, lambda ref, b: b.replace("16MM_B.MOUNT", "16MM_DUALGANG", 1) if ref == "RV202" else b)
+    run = _build(board, tmp_path / "face-Unknown")
+    assert run.returncode != 0 and "unsupported" in (run.stdout + run.stderr).lower()

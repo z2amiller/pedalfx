@@ -121,6 +121,43 @@ def board_pots(board_text):
     return sorted(out)
 
 
+PANEL_PART = re.compile(r'_MB_|SPDT|DPDT|3PDT|TOGGLE|ROTARY', re.I)
+
+
+def _footprints(board_text):
+    """(ref, lib id, anchor x, anchor y, rotation, [(pad number, local x, local y)]) of every footprint."""
+    out = []
+    for item in _items(board_text):
+        if not item.startswith("(footprint"):
+            continue
+        lib = re.match(r'\(footprint "([^"]+)"', item).group(1)
+        ref = re.search(r'\(property "Reference" "([^"]+)"', item).group(1)
+        at = re.search(r'^\t\t\(at (-?[\d.]+) (-?[\d.]+)(?: (-?[\d.]+))?\)', item, re.M)
+        pads = [(n, float(x), float(y)) for n, x, y in
+                re.findall(r'\(pad "([^"]*)" \w+ \w+\s*\(at (-?[\d.]+) (-?[\d.]+)', item)]
+        out.append((ref, lib, float(at.group(1)), float(at.group(2)), float(at.group(3) or 0), pads))
+    return out
+
+
+def board_leds(board_text):
+    """(ref, body x, body y) of every through-hole LED (LED_THT library): the midpoint of its two pads."""
+    out = []
+    for ref, lib, fx, fy, rot, pads in _footprints(board_text):
+        if not lib.startswith("LED_THT:") or len(pads) != 2:
+            continue
+        r = math.radians(rot)
+        pts = [(fx + x * math.cos(r) + y * math.sin(r), fy - x * math.sin(r) + y * math.cos(r)) for _n, x, y in pads]
+        out.append((ref, round((pts[0][0] + pts[1][0]) / 2, 4), round((pts[0][1] + pts[1][1]) / 2, 4)))
+    return sorted(out, key=lambda led: led[1])
+
+
+def board_unsupported(board_text):
+    """(ref, lib id) of panel hardware the faceplate builder does not know: anything from the _MB_ panel libraries,
+    or a toggle/rotary switch, other than a 16MM_B.MOUNT pot."""
+    return [(ref, lib) for ref, lib, *_rest in _footprints(board_text)
+            if PANEL_PART.search(lib) and not lib.endswith(":16MM_B.MOUNT")]
+
+
 def _box_in_poly(box, poly, m):
     """True when the box grown by m lies inside the (rectilinear) polygon and no vertex pokes into it."""
     x0, y0, x1, y1 = box[0] - m, box[1] - m, box[2] + m, box[3] + m
@@ -137,7 +174,7 @@ def _box_circle_gap(box, c, r):
 def _check_labels(items, labels, frames):
     """labels: (text, x0, y0, x1, y1) as measured on the saved board; frames: the frame polygons (unfilleted)."""
     msgs = []
-    texts = {re.match(r'\(gr_text "((?:[^"\\]|\\.)*)"', i).group(1) for i in items
+    texts = {re.match(r'\(gr_text "((?:[^"\\]|\\.)*)"', i).group(1).replace("\\n", "\n") for i in items
              if i.startswith("(gr_text") and _layer(i) == "F.SilkS"}
     holes = [(x, y) for x, y, r in (_circle(i) for i in items if i.startswith("(gr_circle") and _layer(i) == "Edge.Cuts")
              if abs(r - HOLE_R) < 0.05]
