@@ -87,7 +87,7 @@ def build_parser():
                         help="put 2-pad passive/diode reference labels north (horizontal parts) or west (vertical)")
     sl.add_argument("targets", nargs="+", help="project directories or .kicad_pro files")
     sl.add_argument("--dry-run", action="store_true", help="report the plan, write nothing")
-    sl.add_argument("--gap", type=float, default=silklabels.GAP, help="mm from courtyard edge to text centre")
+    sl.add_argument("--gap", type=float, default=silklabels.GAP, help="mm from the part's own pads and silk to the label's edge")
     sl.add_argument("--skip", default="", help="comma-separated refs to leave alone")
     sl.add_argument("--no-drc", action="store_true", help="skip the kicad-cli DRC cross-check")
     sl.add_argument("--kicad-cli", default=None)

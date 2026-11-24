@@ -1,14 +1,18 @@
 """Put 2-pad passive/diode reference labels on one side of the part.
 
 A horizontal part gets its label north (horizontal text), a vertical part gets it west
-(text reading bottom-to-top), with the text centre GAP mm beyond the courtyard edge, the
-spacing KiCad's own libraries use. Only 2-pad SMD R/C/D/L footprints on the front are
-touched; electrolytic cans, ICs, LEDs, pots and switches are left to the designer.
+(text reading bottom-to-top), with the label's near edge GAP mm beyond the part's own pads
+and front silk, whichever reaches further. That is how Andy packs them by hand (measured on
+fx-Nashville, 2026-11-23: median 0.20 mm), and it lets a label sit inside its own part's
+courtyard. Only 2-pad SMD R/C/D/L footprints on the front are touched; electrolytic cans,
+ICs, LEDs, pots and switches are left to the designer.
 
-A label that already sits on the right side (centred, 0.1-1.0 mm out) is kept, so
-hand-tuned gaps survive. A move that would land on a pad, inside another part's
-courtyard, on another label or off the board is not made and is reported instead.
-Only the (at ...) of each moved Reference property is rewritten.
+A label that already sits on the right side (centred, its edge FIT_MIN-FIT_MAX mm off the
+pads and silk) is kept, so hand-tuned gaps survive. A move that would land on another part's
+pad, courtyard, label, silk text or silk graphic, or off the board, is not made and is
+reported instead. Silk texts are checked here because the fleet DRC rules let silk overlap
+pot and jack captions, so the DRC cross-check cannot see a label on "LEVEL". Only the
+(at ...) of each moved Reference property is rewritten.
 
 KiCad 10 storage facts this relies on: a footprint field's (at x y a) holds x, y in the
 footprint's own frame and a as the board angle; board = fp + R(fp_rot)·local with
@@ -24,7 +28,10 @@ from pathlib import Path
 
 from . import kicadcli
 
-GAP = 0.70          # mm from courtyard edge to text centre
+GAP = 0.20          # mm from the part's own pads and silk to the label's near edge
+FIT_MIN = -0.12     # a label whose edge sits from just over the part's own silk (hand-placed labels on
+FIT_MAX = 0.80      # fx-BlueBlood/fx-Revolver touch it, -0.02..+0.02; DRC ignores a part's own silk)
+                    # up to this far out, on the right side and centred, is kept
 PAD_CLEARANCE = 0.15
 LABEL_CLEARANCE = 0.10
 EDGE_MARGIN = 0.30
@@ -92,6 +99,8 @@ class Footprint:
     pads: list = field(default_factory=list)
     courtyard: list = field(default_factory=list)  # local (x, y) points
     label: dict | None = None  # lx, ly, angle, layer, size, hidden, span (absolute in board text)
+    silk: list = field(default_factory=list)   # front silk graphics: (kind, local points, stroke width)
+    texts: list = field(default_factory=list)  # visible front silk texts other than the Reference label
 
     def is_target(self) -> bool:
         return (self.label is not None and len(self.pads) == 2 and all(p.smd for p in self.pads)
@@ -117,6 +126,46 @@ class Footprint:
             half_h = abs(pad.w / 2 * math.sin(r)) + abs(pad.h / 2 * math.cos(r))
             x, y = to_board(self.fx, self.fy, self.frot, pad.lx, pad.ly)
             boxes.append((x - half_w, y - half_h, x + half_w, y + half_h))
+        return boxes
+
+    def silk_boxes(self):
+        """Board-frame boxes of the front silk graphics: one per line or outline edge; circles and arcs by extent."""
+        boxes = []
+        for kind, points, width in self.silk:
+            board = [to_board(self.fx, self.fy, self.frot, x, y) for x, y in points]
+            half = width / 2
+            if kind == "circle" and len(board) == 2:
+                (cx, cy), (ex, ey) = board
+                r = math.hypot(ex - cx, ey - cy) + half
+                boxes.append((cx - r, cy - r, cx + r, cy + r))
+                continue
+            if kind == "rect" and len(board) == 2:
+                corners = [points[0], (points[1][0], points[0][1]), points[1], (points[0][0], points[1][1])]
+                board = [to_board(self.fx, self.fy, self.frot, x, y) for x, y in corners]
+            if kind in ("rect", "poly"):
+                edges = list(zip(board, board[1:] + board[:1]))
+            elif kind == "line" and len(board) == 2:
+                edges = [(board[0], board[1])]
+            else:  # arc: start, mid, end
+                xs, ys = [p[0] for p in board], [p[1] for p in board]
+                boxes.append((min(xs) - half, min(ys) - half, max(xs) + half, max(ys) + half))
+                continue
+            for (ax, ay), (bx, by) in edges:
+                boxes.append((min(ax, bx) - half, min(ay, by) - half, max(ax, bx) + half, max(ay, by) + half))
+        return boxes
+
+    def envelope(self):
+        """Board-frame box around the part's own pads and front silk: what its label is spaced from."""
+        boxes = self.pad_boxes() + self.silk_boxes()
+        if not boxes:
+            return self.body()
+        return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+
+    def text_boxes(self):
+        boxes = []
+        for text in self.texts:
+            x, y = to_board(self.fx, self.fy, self.frot, text["lx"], text["ly"])
+            boxes.append(label_box(x, y, text["text"], text["size"], text["thickness"], text["angle"] % 180 != 0))
         return boxes
 
     def label_position(self):
@@ -152,9 +201,31 @@ def parse_footprints(text: str) -> list:
                                re.match(r'\(pad "[^"]*" (\w+)', pad).group(1) == "smd"))
         for gs, ge in spans(block, r"\n\t\t\(fp_(?:line|rect|poly|circle|arc)"):
             shape = block[gs:ge]
+            points = [(float(x), float(y)) for x, y in
+                      re.findall(r"\((?:start|end|xy|mid|center) " + _NUM + " " + _NUM + r"\)", shape)]
             if "CrtYd" in shape:
-                fp.courtyard += [(float(x), float(y)) for x, y in
-                                 re.findall(r"\((?:start|end|xy|mid|center) " + _NUM + " " + _NUM + r"\)", shape)]
+                fp.courtyard += points
+            elif '(layer "F.SilkS")' in shape:
+                kind = re.match(r"\(fp_(\w+)", shape).group(1)
+                width = re.search(r"\(width " + _NUM + r"\)", shape)
+                fp.silk.append((kind, points, float(width.group(1)) if width else 0.12))
+        properties = {name.lower(): value for name, value in re.findall(r'\n\t\t\(property "([^"]+)" "([^"]*)"', block)}
+        for ts, te in spans(block, r'\n\t\t\((?:property "(?!Reference")|fp_text )'):
+            item = block[ts:te]
+            if '(layer "F.SilkS")' not in item or "(hide yes)" in item:
+                continue
+            words = re.match(r'\((?:property "[^"]*"|fp_text \w+) "([^"]*)"', item)
+            pat = _AT.search(item)
+            if not words or not pat:
+                continue
+            shown = re.sub(r"\$\{(\w+)\}", lambda m: properties.get(m.group(1).lower(), m.group(0)), words.group(1))
+            if not shown.strip():
+                continue
+            size = re.search(r"\(size " + _NUM + " " + _NUM + r"\)", item)
+            thickness = re.search(r"\(thickness " + _NUM + r"\)", item)
+            fp.texts.append(dict(text=shown, lx=float(pat.group(1)), ly=float(pat.group(2)),
+                                 angle=float(pat.group(3) or 0), size=float(size.group(2)) if size else 1.0,
+                                 thickness=float(thickness.group(1)) if thickness else 0.15))
         footprints.append(fp)
     return footprints
 
@@ -202,15 +273,17 @@ def plan_labels(footprints, outline=None, gap=GAP, skip=(), blocked=None) -> dic
         x0, y0, x1, y1 = fp.body()
         cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
         horizontal = (x1 - x0) >= (y1 - y0)
+        ex0, ey0, _, _ = fp.envelope()
         lx, ly, vertical_now = fp.label_position()
         size, thick = fp.label["size"], fp.label["thickness"]
+        half = (size + thick) / 2  # half the text height: the label's depth away from the part
         current = label_box(lx, ly, fp.ref, size, thick, vertical_now)
         if horizontal:
-            fits = not vertical_now and abs(lx - cx) <= 0.3 and 0.1 <= y0 - ly <= 1.0
-            target = (cx, y0 - gap, False)
+            fits = not vertical_now and abs(lx - cx) <= 0.3 and FIT_MIN <= ey0 - current[3] <= FIT_MAX
+            target = (cx, ey0 - gap - half, False)
         else:
-            fits = vertical_now and abs(ly - cy) <= 0.3 and 0.1 <= x0 - lx <= 1.0
-            target = (x0 - gap, cy, True)
+            fits = vertical_now and abs(ly - cy) <= 0.3 and FIT_MIN <= ex0 - current[2] <= FIT_MAX
+            target = (ex0 - gap - half, cy, True)
         if fits:
             plans[fp.ref] = Plan("keep", current)
         elif fp.ref in skip:
@@ -223,6 +296,8 @@ def plan_labels(footprints, outline=None, gap=GAP, skip=(), blocked=None) -> dic
 
     pads = [(fp.ref, box) for fp in footprints for box in fp.pad_boxes()]
     courtyards = [(fp.ref, fp.body()) for fp in footprints if fp.courtyard]
+    texts = [(fp.ref, box) for fp in footprints for box in fp.text_boxes()]
+    silk = [(fp.ref, box) for fp in footprints for box in fp.silk_boxes()]
     fixed_labels = []
     for fp in footprints:
         if fp.label and not fp.is_target() and fp.label["layer"] == "F.SilkS" and not fp.label["hidden"]:
@@ -235,18 +310,20 @@ def plan_labels(footprints, outline=None, gap=GAP, skip=(), blocked=None) -> dic
         for ref, plan in plans.items():
             if plan.action != "move":
                 continue
-            reason = _collision(ref, plan.box, outline, pads, courtyards, fixed_labels, plans)
+            reason = _collision(ref, plan.box, outline, pads, courtyards, fixed_labels, plans, texts, silk)
             if reason:
                 plans[ref] = Plan("blocked", plan.current_box or plan.box, plan.target, reason)
                 changed = True
     return plans
 
 
-def _collision(ref, box, outline, pads, courtyards, fixed_labels, plans) -> str:
+def _collision(ref, box, outline, pads, courtyards, fixed_labels, plans, texts=(), silk=()) -> str:
+    """Why a label box can't go here. The part's own pads, silk and courtyard don't count: the
+    target already clears its pads and silk by the gap, and a label may sit in its own courtyard."""
     if outline and not (box[0] >= outline[0] + EDGE_MARGIN and box[1] >= outline[1] + EDGE_MARGIN
                         and box[2] <= outline[2] - EDGE_MARGIN and box[3] <= outline[3] - EDGE_MARGIN):
         return "board edge"
-    hits = sorted({other for other, pad in pads if overlaps(box, pad, PAD_CLEARANCE)})
+    hits = sorted({other for other, pad in pads if other != ref and overlaps(box, pad, PAD_CLEARANCE)})
     if hits:
         return "pad of " + ",".join(hits)
     hits = sorted({other for other, court in courtyards if other != ref and overlaps(box, court)})
@@ -256,6 +333,12 @@ def _collision(ref, box, outline, pads, courtyards, fixed_labels, plans) -> str:
     hits |= {other for other, plan in plans.items() if other != ref and overlaps(box, plan.box, LABEL_CLEARANCE)}
     if hits:
         return "label of " + ",".join(sorted(hits))
+    hits = sorted({other for other, text in texts if overlaps(box, text, LABEL_CLEARANCE)})
+    if hits:
+        return "text of " + ",".join(hits)
+    hits = sorted({other for other, graphic in silk if other != ref and overlaps(box, graphic, LABEL_CLEARANCE)})
+    if hits:
+        return "silk of " + ",".join(hits)
     return ""
 
 

@@ -10,7 +10,7 @@ UUID = '(uuid "00000000-0000-0000-0000-000000000000")'
 
 
 def footprint(ref, x, y, rot, label_at, lib="Resistor_SMD:R_0603_1608Metric", half=(1.48, 0.73),
-              pad_x=0.775, pad_size=(0.9, 0.95), npads=2, layer="F.Cu"):
+              pad_x=0.775, pad_size=(0.9, 0.95), npads=2, layer="F.Cu", extra=""):
     lx, ly, la = label_at
     pads = "".join(
         f'\t\t(pad "{n + 1}" smd roundrect\n\t\t\t(at {(-pad_x if n == 0 else pad_x) if npads == 2 else n} 0 {rot})\n'
@@ -21,7 +21,20 @@ def footprint(ref, x, y, rot, label_at, lib="Resistor_SMD:R_0603_1608Metric", ha
             f'\t\t\t(effects\n\t\t\t\t(font\n\t\t\t\t\t(size 0.8 0.8)\n\t\t\t\t\t(thickness 0.15)\n\t\t\t\t)\n\t\t\t)\n\t\t)\n'
             f'\t\t(fp_rect\n\t\t\t(start {-half[0]} {-half[1]})\n\t\t\t(end {half[0]} {half[1]})\n'
             f'\t\t\t(stroke\n\t\t\t\t(width 0.05)\n\t\t\t\t(type solid)\n\t\t\t)\n\t\t\t(fill no)\n'
-            f'\t\t\t(layer "F.CrtYd")\n\t\t\t{UUID}\n\t\t)\n{pads}\t)\n')
+            f'\t\t\t(layer "F.CrtYd")\n\t\t\t{UUID}\n\t\t)\n{extra}{pads}\t)\n')
+
+
+def silk_line(x1, y1, x2, y2, width=0.12):
+    return (f'\t\t(fp_line\n\t\t\t(start {x1} {y1})\n\t\t\t(end {x2} {y2})\n'
+            f'\t\t\t(stroke\n\t\t\t\t(width {width})\n\t\t\t\t(type solid)\n\t\t\t)\n'
+            f'\t\t\t(layer "F.SilkS")\n\t\t\t{UUID}\n\t\t)\n')
+
+
+def silk_text(text, x, y, angle=0, size=1.0, kind="fp_text user", layer="F.SilkS", hide=False):
+    hidden = "\t\t\t(hide yes)\n" if hide else ""
+    return (f'\t\t({kind} "{text}"\n\t\t\t(at {x} {y} {angle})\n\t\t\t(layer "{layer}")\n{hidden}'
+            f'\t\t\t{UUID}\n\t\t\t(effects\n\t\t\t\t(font\n\t\t\t\t\t(size {size} {size})\n'
+            f'\t\t\t\t\t(thickness 0.15)\n\t\t\t\t)\n\t\t\t)\n\t\t)\n')
 
 
 def board(*footprints, outline=(0, 0, 60, 40)):
@@ -61,9 +74,9 @@ def test_south_label_moves_north_and_only_that_line_changes():
     fps, plans = plan_for(text)
     assert plans["R1"].action == "move"
     new = silklabels.rewrite(text, fps, plans)
-    assert label_at(new, "R1") == pytest.approx((0, -1.43, 0))
+    assert label_at(new, "R1") == pytest.approx((0, -1.15, 0))
     changed = [(a, b) for a, b in zip(text.splitlines(), new.splitlines()) if a != b]
-    assert changed == [("\t\t\t(at 0 1.43 0)", "\t\t\t(at 0 -1.43 0)")]
+    assert changed == [("\t\t\t(at 0 1.43 0)", "\t\t\t(at 0 -1.15 0)")]
 
 
 def test_label_already_north_is_kept_including_hand_tuned_gaps():
@@ -83,7 +96,51 @@ def test_vertical_part_label_moves_west_reading_bottom_to_top():
     lx, ly, angle = label_at(new, "C1")
     assert angle == 90
     bx, by = silklabels.to_board(20, 20, 90, lx, ly)
-    assert (bx, by) == pytest.approx((20 - 0.98 - 0.7, 20))
+    # the turned pads reach 0.725 mm west of centre; the label edge sits 0.20 mm beyond them
+    assert (bx, by) == pytest.approx((20 - 0.725 - 0.20 - 0.475, 20))
+
+
+def test_own_silk_outline_sets_the_spacing():
+    # silk lines 0.8 mm out (0.12 wide) reach past the pads, so the label clears the silk instead
+    text = board(footprint("R8", 20, 20, 0, (0, 2.5, 0), extra=silk_line(-0.3, -0.8, 0.3, -0.8) + silk_line(-0.3, 0.8, 0.3, 0.8)))
+    fps, plans = plan_for(text)
+    new = silklabels.rewrite(text, fps, plans)
+    assert label_at(new, "R8") == pytest.approx((0, -(0.86 + 0.20 + 0.475), 0))
+
+
+def test_label_may_overlap_its_own_courtyard():
+    # a roomy courtyard (1.2 mm half-height) no longer pushes the label out: it sits 0.20 mm past the pads
+    text = board(footprint("R9", 20, 20, 0, (0, 2.5, 0), half=(1.6, 1.2)))
+    fps, plans = plan_for(text)
+    assert plans["R9"].action == "move"
+    assert label_at(silklabels.rewrite(text, fps, plans), "R9") == pytest.approx((0, -1.15, 0))
+
+
+@pytest.mark.parametrize("edge_gap,action", [(0.05, "keep"), (-0.02, "keep"), (0.75, "keep"),
+                                              (-0.2, "move"), (1.0, "move")])
+def test_fit_window_is_measured_from_the_pads_and_silk(edge_gap, action):
+    # Andy packs labels 0.05-0.35 mm off the part's own silk and pads, some touching it; those stay put
+    centre = -(0.475 + edge_gap + 0.475)
+    text = board(footprint("R10", 20, 20, 0, (0, round(centre, 4), 0)))
+    _, plans = plan_for(text)
+    assert plans["R10"].action == action
+
+
+def test_a_neighbours_silk_caption_blocks_a_move():
+    # pot captions (${Control}) may overlap other silk under the fleet DRC rules, so the planner checks them itself
+    pot = footprint("RV6", 20, 10, 0, (0, -3, 0), lib="_MB_potentiometers:16MM", npads=3, half=(5, 0.5),
+                    pad_size=(0.3, 0.3), extra=silk_text("${Control}", 0, 8.6)
+                    + silk_text("LEVEL", 0, 5, kind='property "Control"', layer="F.Fab", hide=True))
+    text = board(footprint("R11", 20, 20, 0, (0, 1.43, 0)), pot)
+    _, plans = plan_for(text)
+    assert plans["R11"].action == "blocked" and plans["R11"].reason == "text of RV6"
+
+
+def test_a_neighbours_silk_line_blocks_a_move():
+    other = footprint("J5", 30, 30, 0, (0, -1.43, 0), extra=silk_line(-10.4, -11.15, -9.6, -11.15))
+    text = board(footprint("R12", 20, 20, 0, (0, 1.43, 0)), other)
+    _, plans = plan_for(text)
+    assert plans["R12"].action == "blocked" and plans["R12"].reason == "silk of J5"
 
 
 def test_neighbour_pad_blocks_a_move_and_names_the_neighbour():
@@ -143,7 +200,7 @@ def test_cli_dry_run_then_write(tmp_path, capsys):
     code = cli.main(["silk-labels", str(p.dir), "--no-drc", "--no-process-check"])
     out = capsys.readouterr().out
     assert code == 0 and "wrote fx-S.kicad_pcb: 1 label(s) moved" in out
-    assert label_at(p.pcb.read_text(), "R1") == pytest.approx((0, -1.43, 0))
+    assert label_at(p.pcb.read_text(), "R1") == pytest.approx((0, -1.15, 0))
 
 
 def test_cli_refuses_while_kicad_has_the_board_open(tmp_path, capsys, monkeypatch):

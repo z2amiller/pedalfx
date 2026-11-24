@@ -50,13 +50,18 @@ no longer exists; use `clone` instead.
 `silk-labels` tidies reference designators after placement. For every 2-pad SMD
 R/C/D/L footprint on the front, it puts the label north of a horizontal part
 (horizontal text) or west of a vertical one (text reading bottom to top), with
-the text centre 0.7 mm beyond the courtyard (`--gap`), the spacing KiCad's own
-libraries use. ICs, LEDs, pots, switches and electrolytic cans are left alone.
+the label's edge 0.2 mm beyond the part's own pads and silk (`--gap`), whichever
+reaches further. That is how labels are packed by hand (fx-Nashville,
+2026-11-23), and it lets a label sit inside its own part's courtyard. ICs, LEDs,
+pots, switches and electrolytic cans are left alone.
 
-- A label already on the right side (centred, 0.1-1.0 mm out) is kept, so
-  hand-tuned gaps survive.
-- A move that would land on a pad, inside another part's courtyard, on another
-  label or off the board is not made; the run lists those parts and why.
+- A label already on the right side (centred, its edge from just over the part's
+  own silk to 0.8 mm out) is kept, so hand-tuned gaps survive.
+- A move that would land on another part's pad, courtyard, label, silk text or
+  silk graphic, or off the board, is not made; the run lists those parts and
+  why. Silk texts are checked by the planner because the fleet DRC rules let
+  silk sit on pot and jack captions, so the DRC check below cannot see a label
+  on "LEVEL".
 - `--skip R12,C3` leaves named parts alone.
 - With kicad-cli available, the planned board is DRC'd against the original on
   temp copies. Any move that adds a silkscreen violation is put back, and the
@@ -74,11 +79,11 @@ Graphics does not reliably catch these.
 
 It reads every board-level Edge.Cuts `gr_line`, `gr_arc`, `gr_rect`,
 `gr_circle`, `gr_poly` and `gr_curve`. Edge.Cuts drawn inside footprints are
-read as fixed context and never edited. The check (the default, read-only,
-exit 1 on findings) reports:
+read as fixed context and never edited. The check (the default, read-only, exit
+1 on findings) reports:
 
-- **stubs:** lines or arcs shorter than the tolerance (`--tol`, default
-  0.05 mm);
+- **stubs:** lines or arcs shorter than the tolerance (`--tol`, default 0.05
+  mm);
 - **gaps:** pairs of ends closer than the tolerance but not identical to the
   nanometre;
 - **collinear splits:** lines that meet end to end on one straight line;
@@ -93,10 +98,10 @@ exit 1 on findings) reports:
 `--fix` heals the board and `--dry-run` prints the same edits as a diff:
 
 - Stubs are dropped.
-- Each gap is snapped onto one exact point. A line end moves onto an arc,
-  curve or footprint end, never the reverse, because moving an arc end changes
-  its radius and centre. Between two lines, the end whose differing coordinate
-  sits on the coarser grid stays.
+- Each gap is snapped onto one exact point. A line end moves onto an arc, curve
+  or footprint end, never the reverse, because moving an arc end changes its
+  radius and centre. Between two lines, the end whose differing coordinate sits
+  on the coarser grid stays.
 - Collinear lines that meet end to end are merged into one.
 - A stub between two arcs is kept, since nothing could close the gap without it.
 
