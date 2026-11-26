@@ -404,3 +404,58 @@ def test_cli_no_values_leaves_values_alone(tmp_path, capsys):
     code = cli.main(["silk-labels", str(p.dir), "--no-values", "--no-drc", "--no-process-check"])
     out = capsys.readouterr().out
     assert code == 0 and "values" not in out and p.pcb.read_text() == original
+
+
+# --- library use (kicad-live labels) ------------------------------------------------------------
+
+
+def test_footprint_uuid_is_parsed():
+    text = board(footprint("R1", 20, 20, 0, (0, 1.43, 0)).replace(UUID, '(uuid "fp-r1")', 1))
+    assert silklabels.parse_footprints(text)[0].uuid == "fp-r1"
+
+
+def test_only_limits_the_parts_planned_and_keeps_the_rest_as_obstacles():
+    # R2's label sits where R1's would go; with R2 out of scope it stays put and blocks R1
+    text = board(footprint("R1", 20, 20, 0, (0, 1.43, 0)), footprint("R2", 30, 20, 0, (-10, -1.15, 0)),
+                 cap("C1", 40, 10, 0), cap("C2", 40, 30, 0))
+    fps = silklabels.parse_footprints(text)
+    outline = silklabels.board_outline(text)
+    labels = silklabels.plan_labels(fps, outline, only={"R1", "C1"})
+    assert set(labels) == {"R1"} and labels["R1"].reason == "label of R2"
+    values = silklabels.plan_values(fps, outline, labels, only={"R1", "C1"})
+    assert set(values) == {"C1"}
+
+
+def test_run_passes_only_through_and_returns_the_footprints(tmp_path):
+    p = write_project(tmp_path / "fx-S", "fx-S")
+    p.pcb.write_text(board(footprint("R1", 20, 20, 0, (0, 1.43, 0)), cap("C1", 40, 10, 0)))
+    result = silklabels.run(p.pcb, p.pro, only={"C1"})
+    assert result.plans == {} and set(result.values) == {"C1"}
+    assert [fp.ref for fp in result.footprints] == ["R1", "C1"]
+
+
+def test_drc_cross_check_uses_the_projects_rules_file(tmp_path):
+    p = write_project(tmp_path / "fx-S", "fx-S")
+    p.pcb.write_text(board(footprint("R1", 20, 20, 0, (0, 1.43, 0))))
+    p.pcb.with_suffix(".kicad_dru").write_text("(version 1)\n")
+    seen = []
+
+    def fake_drc(kicad_cli, pcb, out_json):
+        seen.append(pcb.with_suffix(".kicad_dru").read_text())
+        return {"violations": []}
+
+    silklabels.run(p.pcb, p.pro, kicad_cli=tmp_path / "kicad-cli", drc=fake_drc)
+    assert seen and all(rules == "(version 1)\n" for rules in seen)
+
+
+def test_report_lines_match_the_cli_report():
+    text = board(footprint("R1", 20, 20, 0, (0, 1.43, 0)), cap("C1", 40, 10, 0),
+                 cap("C4", 40, 30, 0, value="100uF", pitch=2.5))
+    fps = silklabels.parse_footprints(text)
+    outline = silklabels.board_outline(text)
+    labels = silklabels.plan_labels(fps, outline)
+    result = silklabels.Result(labels, text, values=silklabels.plan_values(fps, outline, labels))
+    lines = silklabels.report_lines(result, "fx-S")
+    assert lines[0] == "== fx-S: 1 passive/diode label(s): 1 moved, 0 already fit, 0 left alone"
+    assert "   through-hole values: 1 placed, 0 already centred, 1 left alone" in lines
+    assert any(line.startswith("     C4     100uF  too tight") for line in lines)

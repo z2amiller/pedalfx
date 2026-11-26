@@ -113,6 +113,7 @@ class Footprint:
     fx: float
     fy: float
     frot: float
+    uuid: str = ""
     pads: list = field(default_factory=list)
     courtyard: list = field(default_factory=list)  # local (x, y) points
     label: dict | None = None  # lx, ly, angle, layer, size, hidden, span (absolute in board text)
@@ -229,6 +230,8 @@ def parse_footprints(text: str) -> list:
         fp = Footprint(ref="", lib=re.match(r'\(footprint "([^"]*)"', block).group(1),
                        layer=re.search(r'\n\t\t\(layer "([^"]+)"\)', block).group(1),
                        fx=float(at.group(1)), fy=float(at.group(2)), frot=float(at.group(3) or 0))
+        uuid = re.search(r'\n\t\t\(uuid "([^"]+)"\)', block)
+        fp.uuid = uuid.group(1) if uuid else ""
         for ps, pe in spans(block, r'\n\t\t\(property "Reference"'):
             fp.label = _field(block[ps:pe], (start + ps, start + pe))
             fp.ref = fp.label["text"]
@@ -310,10 +313,11 @@ class Plan:
     text: str = ""                 # what the field shows (value plans)
 
 
-def plan_labels(footprints, outline=None, gap=GAP, skip=(), blocked=None) -> dict:
-    """Plan every target label. blocked maps ref -> reason for moves already known to be bad."""
+def plan_labels(footprints, outline=None, gap=GAP, skip=(), blocked=None, only=None) -> dict:
+    """Plan every target label. blocked maps ref -> reason for moves already known to be bad;
+    only, when given, limits the planning to those refs and leaves every other label where it is."""
     blocked = blocked or {}
-    targets = [fp for fp in footprints if fp.is_target()]
+    targets = [fp for fp in footprints if fp.is_target() and (only is None or fp.ref in only)]
     plans = {}
     for fp in targets:
         x0, y0, x1, y1 = fp.body()
@@ -346,7 +350,7 @@ def plan_labels(footprints, outline=None, gap=GAP, skip=(), blocked=None) -> dic
     silk = [(fp.ref, box) for fp in footprints for box in fp.silk_boxes()]
     fixed_labels = []
     for fp in footprints:
-        if fp.label and not fp.is_target() and fp.label["layer"] == "F.SilkS" and not fp.label["hidden"]:
+        if fp.label and fp.ref not in plans and fp.label["layer"] == "F.SilkS" and not fp.label["hidden"]:
             x, y, vertical = fp.label_position()
             fixed_labels.append((fp.ref, label_box(x, y, fp.ref, fp.label["size"], fp.label["thickness"], vertical)))
 
@@ -363,18 +367,19 @@ def plan_labels(footprints, outline=None, gap=GAP, skip=(), blocked=None) -> dic
     return plans
 
 
-def plan_values(footprints, outline=None, label_plans=None, skip=(), blocked=None) -> dict:
+def plan_values(footprints, outline=None, label_plans=None, skip=(), blocked=None, only=None) -> dict:
     """Plan the Value of every 2-pad through-hole part: centred between its pad centres, upright along it.
 
     label_plans are the planned Reference labels, whose final boxes are in the way. blocked maps
     ref -> reason for placements already known to be bad (the DRC cross-check). Labels are planned
-    first and don't see the values: a value sits between its own pads, where no label goes.
+    first and don't see the values: a value sits between its own pads, where no label goes. only,
+    when given, limits the planning to those refs.
     """
     label_plans = label_plans or {}
     blocked = blocked or {}
     plans = {}
     for fp in footprints:
-        if not fp.is_value_target():
+        if not fp.is_value_target() or (only is not None and fp.ref not in only):
             continue
         value, current = fp.value, fp.value_box()
         text = value["text"]
@@ -530,6 +535,7 @@ class Result:
     silk_after: Counter = field(default_factory=Counter)
     new_violations: set = field(default_factory=set)
     values: dict = field(default_factory=dict)  # ref -> Plan for each through-hole part's Value
+    footprints: list = field(default_factory=list)  # as parsed from the board text the plans came from
 
     def count(self, action: str) -> int:
         return sum(1 for plan in self.plans.values() if plan.action == action)
@@ -539,9 +545,10 @@ class Result:
 
 
 def run(pcb: Path, pro: Path | None = None, gap: float = GAP, skip=(), kicad_cli: Path | None = None,
-        drc=None, max_rounds: int = 3, values: bool = True) -> Result:
+        drc=None, max_rounds: int = 3, values: bool = True, only=None) -> Result:
     """Plan and rewrite one board; with kicad_cli, put back any label move or placed value that
-    adds a silk DRC violation. values=False leaves the through-hole parts' values alone.
+    adds a silk DRC violation. values=False leaves the through-hole parts' values alone; only, when
+    given, limits the run to those refs (kicad-live labels plans a named section this way).
 
     drc(kicad_cli, pcb_path, out_json) -> report is injectable for tests. The default runs kicad-cli
     without --refill-zones: silk findings don't depend on zone fill, and the runs stay sequential
@@ -553,12 +560,12 @@ def run(pcb: Path, pro: Path | None = None, gap: float = GAP, skip=(), kicad_cli
     blocked, value_blocked = {}, {}
 
     def replan():
-        labels = plan_labels(footprints, outline, gap, skip, blocked)
-        placed = plan_values(footprints, outline, labels, skip, value_blocked) if values else {}
+        labels = plan_labels(footprints, outline, gap, skip, blocked, only)
+        placed = plan_values(footprints, outline, labels, skip, value_blocked, only) if values else {}
         return labels, placed, rewrite(text, footprints, labels, placed)
 
     plans, value_plans, new_text = replan()
-    result = Result(plans, new_text, values=value_plans)
+    result = Result(plans, new_text, values=value_plans, footprints=footprints)
     if kicad_cli is None or new_text == text:
         return result
     drc = drc or (lambda cli, board, out: kicadcli.run_drc(cli, board, out, refill_zones=False))
@@ -582,7 +589,7 @@ def run(pcb: Path, pro: Path | None = None, gap: float = GAP, skip=(), kicad_cli
             value_blocked.update(value_culprits)
             plans, value_plans, new_text = replan()
         result = Result(plans, new_text, True, Counter(kind for kind, _ in before),
-                        Counter(kind for kind, _ in after), after - before, value_plans)
+                        Counter(kind for kind, _ in after), after - before, value_plans, footprints)
     return result
 
 
@@ -592,7 +599,36 @@ def _check(drc, kicad_cli, directory: Path, name: str, pro: Path | None, text: s
     board.write_text(text, encoding="utf-8")
     if pro is not None and pro.exists():
         shutil.copy(pro, board.with_suffix(".kicad_pro"))
+    if pro is not None and pro.with_suffix(".kicad_dru").exists():  # custom rules (kicad-xc3o)
+        shutil.copy(pro.with_suffix(".kicad_dru"), board.with_suffix(".kicad_dru"))
     return silk_violations(drc(kicad_cli, board, directory / "drc.json"))
+
+
+def report_lines(result: Result, name: str) -> list:
+    """The plan as the silk-labels and kicad-live labels commands print it."""
+    lines = [f"== {name}: {len(result.plans)} passive/diode label(s): {result.count('move')} moved, "
+             f"{result.count('keep')} already fit, {result.count('blocked')} left alone"
+             + (f", {result.count('skip')} skipped" if result.count("skip") else "")]
+    left = sorted((ref, plan.reason) for ref, plan in result.plans.items() if plan.action == "blocked")
+    if left:
+        lines.append("   left alone:")
+        lines += [f"     {ref:6s} {reason}" for ref, reason in left]
+    if result.values:
+        lines.append(f"   through-hole values: {result.count_values('place')} placed, "
+                     f"{result.count_values('keep')} already centred, "
+                     f"{result.count_values('blocked') + result.count_values('skip')} left alone")
+        for heading, actions in (("placed", ("place",)), ("left alone", ("blocked", "skip"))):
+            rows = sorted((ref, plan) for ref, plan in result.values.items() if plan.action in actions)
+            if rows:
+                lines.append(f"   {heading}:")
+            lines += [f"     {ref:6s} {plan.text:6s} {plan.reason}".rstrip() for ref, plan in rows]
+    if result.drc_checked:
+        kinds = sorted(set(result.silk_before) | set(result.silk_after))
+        change = ", ".join(f"{k} {result.silk_before[k]} -> {result.silk_after[k]}" for k in kinds) or "none"
+        new = ("none" if not result.new_violations
+               else f"{len(result.new_violations)} (not from moved labels or placed values)")
+        lines.append(f"   DRC silk: {change}; new: {new}")
+    return lines
 
 
 def silk_violations(report: dict) -> set:
