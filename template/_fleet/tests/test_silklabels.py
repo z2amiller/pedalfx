@@ -216,3 +216,178 @@ def test_cli_refuses_while_kicad_has_the_board_open(tmp_path, capsys, monkeypatc
 
 def test_angle_folds_keep_text_upright():
     assert math.isclose(silklabels.to_board(0, 0, -90, 0, -1.55)[0], 1.55)
+
+
+# --- hand-fit cap values -------------------------------------------------------------------------
+
+FILM = "Capacitor_THT:C_Rect_L7.2mm_W2.5mm_P5.00mm_FKS2_FKP2_MKS2_MKP2"
+HAND_FIT = "through_hole exclude_from_pos_files exclude_from_bom"
+
+
+def cap(ref, x, y, rot, value="22nF", attrs=HAND_FIT, pitch=5, pad=1.6, lib=FILM, ref_at=None,
+        value_at=None, value_layer="F.Fab", hide=False, font=1, extra=""):
+    """A THT cap laid out the way KiCad 10 saves one: pad 1 at the origin, pad 2 at (pitch, 0)."""
+    rx, ry, ra = ref_at or (pitch / 2, -2.5, rot)
+    vx, vy, va = value_at or (pitch / 2, 2.5, rot)
+    hidden = "\t\t\t(hide yes)\n" if hide else ""
+    attr = f"\t\t(attr {attrs})\n" if attrs else ""
+    pads = "".join(
+        f'\t\t(pad "{n + 1}" thru_hole circle\n\t\t\t(at {n * pitch} 0 {rot})\n\t\t\t(size {pad} {pad})\n'
+        f'\t\t\t(drill 0.8)\n\t\t\t(layers "*.Cu" "*.Mask")\n\t\t\t{UUID}\n\t\t)\n' for n in range(2))
+    return (f'\t(footprint "{lib}"\n\t\t(layer "F.Cu")\n\t\t{UUID}\n\t\t(at {x} {y} {rot})\n'
+            f'\t\t(property "Reference" "{ref}"\n\t\t\t(at {rx} {ry} {ra})\n\t\t\t(layer "F.SilkS")\n\t\t\t{UUID}\n'
+            f'\t\t\t(effects\n\t\t\t\t(font\n\t\t\t\t\t(size 0.8 0.8)\n\t\t\t\t\t(thickness 0.15)\n\t\t\t\t)\n\t\t\t)\n\t\t)\n'
+            f'\t\t(property "Value" "{value}"\n\t\t\t(at {vx} {vy} {va})\n\t\t\t(layer "{value_layer}")\n{hidden}'
+            f'\t\t\t{UUID}\n\t\t\t(effects\n\t\t\t\t(font\n\t\t\t\t\t(size {font} {font})\n'
+            f'\t\t\t\t\t(thickness 0.15)\n\t\t\t\t)\n\t\t\t)\n\t\t)\n'
+            f'{attr}{extra}{pads}\t)\n')
+
+
+def value_plans_for(text, **kwargs):
+    fps = silklabels.parse_footprints(text)
+    outline = silklabels.board_outline(text)
+    labels = silklabels.plan_labels(fps, outline)
+    return fps, labels, silklabels.plan_values(fps, outline, labels, **kwargs)
+
+
+def value_at(text, ref):
+    fp = next(f for f in silklabels.parse_footprints(text) if f.ref == ref)
+    v = fp.value
+    return v["lx"], v["ly"], v["angle"], v["layer"], v["hidden"], v["size"]
+
+
+def test_horizontal_film_cap_value_is_centred_between_its_leads():
+    text = board(cap("C1", 20, 20, 0, hide=True))
+    fps, labels, values = value_plans_for(text)
+    assert values["C1"].action == "place"
+    new = silklabels.rewrite(text, fps, labels, values)
+    assert value_at(new, "C1") == (2.5, 0, 0, "F.SilkS", False, 0.8)
+    assert silklabels.to_board(20, 20, 0, 2.5, 0) == pytest.approx((22.5, 20))
+
+
+@pytest.mark.parametrize("rot,angle", [(90, 90), (270, 90), (180, 0), (-90, 90)])
+def test_value_reads_along_the_part_and_upright(rot, angle):
+    text = board(cap("C2", 20, 20, rot))
+    fps, labels, values = value_plans_for(text)
+    assert values["C2"].action == "place"
+    lx, ly, a, layer, hidden, size = value_at(silklabels.rewrite(text, fps, labels, values), "C2")
+    assert (lx, ly, a) == (2.5, 0, angle)
+    # the value's board position is the midpoint of the two pad centres
+    p1, p2 = silklabels.to_board(20, 20, rot, 0, 0), silklabels.to_board(20, 20, rot, 5, 0)
+    assert silklabels.to_board(20, 20, rot, lx, ly) == pytest.approx(((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2))
+
+
+def test_value_rewrite_touches_only_at_layer_hide_and_font():
+    text = board(footprint("R1", 40, 20, 0, (0, -1.15, 0)), cap("C3", 20, 20, 90, hide=True))
+    fps, labels, values = value_plans_for(text)
+    new = silklabels.rewrite(text, fps, labels, values)
+    assert new == board(footprint("R1", 40, 20, 0, (0, -1.15, 0)),
+                        cap("C3", 20, 20, 90, value_at=(2.5, 0, 90), value_layer="F.SilkS", font=0.8))
+
+
+def test_radial_can_on_a_tight_pitch_is_reported_not_printed_over_its_pads():
+    text = board(cap("C4", 20, 20, 0, value="100uF", pitch=2.5, lib="Capacitor_THT:CP_Radial_D6.3mm_P2.50mm"))
+    fps, labels, values = value_plans_for(text)
+    assert values["C4"].action == "blocked" and values["C4"].reason.startswith("too tight")
+    assert silklabels.rewrite(text, fps, labels, values) == text
+
+
+def test_cap_without_hand_fit_flags_is_left_alone():
+    text = board(cap("C5", 20, 20, 0, attrs="through_hole"), cap("C6", 30, 20, 0, attrs=""))
+    fps, labels, values = value_plans_for(text)
+    assert values == {}
+    assert silklabels.rewrite(text, fps, labels, values) == text
+
+
+@pytest.mark.parametrize("attrs", ["through_hole dnp", "exclude_from_bom", "through_hole exclude_from_pos_files",
+                                   "smd exclude_from_pos_files exclude_from_bom dnp"])
+def test_any_hand_fit_flag_counts(attrs):
+    _, _, values = value_plans_for(board(cap("C7", 20, 20, 0, attrs=attrs)))
+    assert values["C7"].action == "place"
+
+
+def test_a_variant_only_dnp_is_not_hand_fit():
+    variant = '\t\t(variant\n\t\t\t(name "C0G SMD Caps")\n\t\t\t(dnp yes)\n\t\t\t(exclude_from_bom yes)\n\t\t)\n'
+    _, _, values = value_plans_for(board(cap("C8", 20, 20, 0, attrs="through_hole", extra=variant)))
+    assert values == {}
+
+
+def test_value_marked_dnp_is_not_fitted_and_is_left_alone():
+    _, _, values = value_plans_for(board(cap("C9", 20, 20, 0, value="100n (DNP)", attrs="smd dnp")))
+    assert values["C9"].action == "skip" and "DNP" in values["C9"].reason
+
+
+@pytest.mark.parametrize("at,font,action", [((2.5, 0, 90), 0.8, "keep"),
+                                            ((2.5, -0.16, 90), 0.8, "keep"),   # hand-placed, fx-Nashville C6
+                                            ((2.45, 0.25, 90), 0.8, "keep"),
+                                            ((2.25, 0, 90), 0.8, "place"),     # crowds pad 1
+                                            ((2.5, 0.5, 90), 0.8, "place"),
+                                            ((2.5, 0, 0), 0.8, "place"),       # reads across the part
+                                            ((2.5, 0, 90), 1, "place")])       # wrong size
+def test_value_already_centred_is_kept_including_hand_placements(at, font, action):
+    text = board(cap("C10", 20, 20, 90, value_at=at, value_layer="F.SilkS", font=font))
+    fps, labels, values = value_plans_for(text)
+    assert values["C10"].action == action
+    assert (silklabels.rewrite(text, fps, labels, values) == text) == (action == "keep")
+
+
+def test_own_reference_between_the_leads_blocks_the_value():
+    _, _, values = value_plans_for(board(cap("C11", 20, 20, 0, ref_at=(2.5, 0, 0))))
+    assert values["C11"].action == "blocked" and values["C11"].reason == "label of C11"
+
+
+def test_skip_also_leaves_the_value_alone():
+    _, _, values = value_plans_for(board(cap("C12", 20, 20, 0)), skip={"C12"})
+    assert values["C12"].action == "skip"
+
+
+def test_value_field_violations_are_told_apart_from_reference_ones():
+    report = {"violations": [{"type": "silk_overlap", "items": [{"description": "Value field of C1 (22nF)"},
+                                                                {"description": "Reference field of R1"}]}]}
+    assert silklabels.silk_violations(report) == {("silk_overlap", ("C1 value", "R1"))}
+
+
+def test_a_board_item_in_a_violation_keeps_its_description():
+    # fx-WahWahWah: C27's value ran into a board-level silk note, which no footprint owns
+    report = {"violations": [{"type": "silk_overlap", "items": [{"description": "Value field of C27 (2.2u)"},
+                                                                {"description": "PCB text '2 x 2.2u Film\n' on F.Silkscreen"}]}]}
+    assert silklabels.silk_violations(report) == {("silk_overlap", ("C27 value", "PCB text '2 x 2.2u Film ' on F.Silkscreen"))}
+
+
+def test_drc_cross_check_puts_back_a_value_that_adds_a_silk_violation(tmp_path):
+    p = write_project(tmp_path / "fx-S", "fx-S")
+    p.pcb.write_text(board(cap("C1", 20, 20, 0), cap("C2", 40, 20, 0)))
+
+    def fake_drc(kicad_cli, pcb, out_json):
+        centred = value_at(pcb.read_text(), "C1")[1] == 0
+        items = [{"description": "Value field of C1 (22nF)"}, {"description": "Segment of U9 on F.Silkscreen"}]
+        return {"violations": [{"type": "silk_overlap", "items": items}] if centred else []}
+
+    result = silklabels.run(p.pcb, p.pro, kicad_cli=tmp_path / "kicad-cli", drc=fake_drc)
+    assert result.values["C1"].action == "blocked" and result.values["C1"].reason == "DRC silk_overlap with U9"
+    assert result.values["C2"].action == "place"
+    assert value_at(result.text, "C1")[:4] == (2.5, 2.5, 0, "F.Fab")
+
+
+def test_cli_reports_and_places_values_by_default(tmp_path, capsys):
+    p = write_project(tmp_path / "fx-S", "fx-S")
+    original = board(cap("C1", 20, 20, 0), cap("C4", 40, 20, 0, value="100uF", pitch=2.5))
+    p.pcb.write_text(original)
+    code = cli.main(["silk-labels", str(p.dir), "--dry-run", "--no-drc", "--no-process-check"])
+    out = capsys.readouterr().out
+    assert code == 0 and "hand-fit cap values: 1 placed, 0 already centred, 1 left alone" in out
+    assert "C1     22nF" in out and "C4     100uF  too tight" in out and "nothing written (dry run)" in out
+    assert p.pcb.read_text() == original
+    code = cli.main(["silk-labels", str(p.dir), "--no-drc", "--no-process-check"])
+    out = capsys.readouterr().out
+    assert code == 0 and "wrote fx-S.kicad_pcb: 0 label(s) moved, 1 cap value(s) placed" in out
+    assert value_at(p.pcb.read_text(), "C1")[:4] == (2.5, 0, 0, "F.SilkS")
+
+
+def test_cli_no_values_leaves_values_alone(tmp_path, capsys):
+    p = write_project(tmp_path / "fx-S", "fx-S")
+    original = board(cap("C1", 20, 20, 0))
+    p.pcb.write_text(original)
+    code = cli.main(["silk-labels", str(p.dir), "--no-values", "--no-drc", "--no-process-check"])
+    out = capsys.readouterr().out
+    assert code == 0 and "cap values" not in out and p.pcb.read_text() == original

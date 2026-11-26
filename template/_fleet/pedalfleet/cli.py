@@ -84,11 +84,14 @@ def build_parser():
     cl.add_argument("--no-process-check", action="store_true")
 
     sl = sub.add_parser("silk-labels",
-                        help="put 2-pad passive/diode reference labels north (horizontal parts) or west (vertical)")
+                        help="put 2-pad passive/diode reference labels north (horizontal parts) or west (vertical), "
+                             "and hand-fit cap values on the silk between their leads")
     sl.add_argument("targets", nargs="+", help="project directories or .kicad_pro files")
     sl.add_argument("--dry-run", action="store_true", help="report the plan, write nothing")
     sl.add_argument("--gap", type=float, default=silklabels.GAP, help="mm from the part's own pads and silk to the label's edge")
-    sl.add_argument("--skip", default="", help="comma-separated refs to leave alone")
+    sl.add_argument("--skip", default="", help="comma-separated refs to leave alone (label and value)")
+    sl.add_argument("--no-values", action="store_true",
+                    help="leave hand-fit cap values alone (default: show each one on F.SilkS between its leads)")
     sl.add_argument("--no-drc", action="store_true", help="skip the kicad-cli DRC cross-check")
     sl.add_argument("--kicad-cli", default=None)
     sl.add_argument("--force", action="store_true", help="proceed while KiCad runs (never with a lock file)")
@@ -350,8 +353,9 @@ def cmd_silk_labels(args, parser):
             print(f"{project.name}: not touched: {checked.reason}")
             failures += 1
             continue
-        result = silklabels.run(project.pcb, project.pro, gap=args.gap, skip=skip, kicad_cli=kicad_cli)
-        moved = result.count("move")
+        result = silklabels.run(project.pcb, project.pro, gap=args.gap, skip=skip, kicad_cli=kicad_cli,
+                                values=not args.no_values)
+        moved, placed = result.count("move"), result.count_values("place")
         print(f"== {project.name}: {len(result.plans)} passive/diode label(s): {moved} moved, "
               f"{result.count('keep')} already fit, {result.count('blocked')} left alone"
               + (f", {result.count('skip')} skipped" if result.count("skip") else ""))
@@ -360,19 +364,33 @@ def cmd_silk_labels(args, parser):
             print("   left alone:")
             for ref, reason in left:
                 print(f"     {ref:6s} {reason}")
+        if result.values:
+            _print_values(result)
         if result.drc_checked:
             kinds = sorted(set(result.silk_before) | set(result.silk_after))
             change = ", ".join(f"{k} {result.silk_before[k]} -> {result.silk_after[k]}" for k in kinds) or "none"
-            new = "none" if not result.new_violations else f"{len(result.new_violations)} (not from moved labels)"
+            new = "none" if not result.new_violations else f"{len(result.new_violations)} (not from moved labels or placed values)"
             print(f"   DRC silk: {change}; new: {new}")
-        elif moved and kicad_cli is None and not args.no_drc:
+        elif (moved or placed) and kicad_cli is None and not args.no_drc:
             print("   DRC cross-check skipped")
-        if args.dry_run or not moved:
-            print("   nothing written" + (" (dry run)" if args.dry_run and moved else ""))
+        if args.dry_run or not (moved or placed):
+            print("   nothing written" + (" (dry run)" if args.dry_run and (moved or placed) else ""))
         else:
             project.pcb.write_text(result.text, encoding="utf-8")
-            print(f"   wrote {project.pcb.name}: {moved} label(s) moved; open it in KiCad to review")
+            print(f"   wrote {project.pcb.name}: {moved} label(s) moved"
+                  + (f", {placed} cap value(s) placed" if placed else "") + "; open it in KiCad to review")
     return 1 if failures else 0
+
+
+def _print_values(result):
+    print(f"   hand-fit cap values: {result.count_values('place')} placed, {result.count_values('keep')} already centred, "
+          f"{result.count_values('blocked') + result.count_values('skip')} left alone")
+    for heading, actions in (("placed", ("place",)), ("left alone", ("blocked", "skip"))):
+        rows = sorted((ref, plan) for ref, plan in result.values.items() if plan.action in actions)
+        if rows:
+            print(f"   {heading}:")
+        for ref, plan in rows:
+            print(f"     {ref:6s} {plan.text:6s} {plan.reason}".rstrip())
 
 
 def _kicad_open(project, args) -> bool:
