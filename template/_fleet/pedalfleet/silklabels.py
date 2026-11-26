@@ -14,17 +14,17 @@ reported instead. Silk texts are checked here because the fleet DRC rules let si
 pot and jack captions, so the DRC cross-check cannot see a label on "LEVEL". Only the
 (at ...) of each moved Reference property is rewritten.
 
-A cap Andy fits by hand also shows its Value on F.SilkS (0.8/0.15 mm), centred on the midpoint
-of its two pad centres and reading along the part: 0 degrees for a horizontal part, 90 for a
-vertical one. It is a build guide, so the part body may cover it once soldered. One already
-shown within VALUE_FIT of the midpoint and clear of its pads is kept, so hand placements
-(fx-Nashville's film caps sit 0.03-0.16 mm off centre) survive. Hand-fit means the footprint's
-own (attr ...) carries dnp, exclude_from_bom or exclude_from_pos_files; the fleet uses them
-inconsistently, so any one counts. A KiCad 10 (variant ...) block's (dnp yes) is
-a per-variant choice and doesn't count, and a Value that says "DNP" marks a part left empty.
-When the text can't clear its own pads by PAD_CLEARANCE (2.0-2.5 mm radial cans, 5-character
-values on a 5 mm film pitch) it is reported, not printed over them. Only the Value property's
-(at ...), layer, hide flag and font size/thickness are rewritten.
+A 2-pad through-hole R/C/D/L on the front (films, ceramics, radial cans, axial resistors,
+diodes and inductors; through-hole from its (attr through_hole) or its drilled pads) also shows
+its Value on F.SilkS (0.8/0.15 mm), centred on the midpoint of its two pad centres and reading
+along the part: 0 degrees for a horizontal part, 90 for a vertical one. It is a build guide, so
+the part body may cover it once soldered. LEDs (D refs on LED footprints), pots, switches, jacks,
+ICs and headers keep their own captions. One already shown within VALUE_FIT of the midpoint and
+clear of its pads is kept, so hand placements (fx-Nashville's film caps sit 0.03-0.16 mm off
+centre) survive, and a Value that says "DNP" marks a part left empty. When the text can't clear
+its own pads by PAD_CLEARANCE (2.0-2.5 mm radial cans, 5-character values on a 5 mm film pitch)
+it is reported, not printed over them. Only the Value property's (at ...), layer, hide flag and
+font size/thickness are rewritten.
 
 KiCad 10 storage facts this relies on: a footprint field's (at x y a) holds x, y in the
 footprint's own frame and a as the board angle; board = fp + R(fp_rot)·local with
@@ -49,7 +49,6 @@ LABEL_CLEARANCE = 0.10
 EDGE_MARGIN = 0.30
 CHAR_ADVANCE = 0.85  # stroke-font advance as a fraction of text height (on the generous side)
 TARGET_PREFIXES = "RCDL"
-HAND_FIT_FLAGS = {"dnp", "exclude_from_bom", "exclude_from_pos_files"}
 VALUE_SIZE = 0.8
 VALUE_THICKNESS = 0.15
 AXIS_TOLERANCE = 0.01  # mm off a horizontal or vertical line between the pad centres
@@ -103,6 +102,7 @@ class Pad:
     w: float
     h: float
     smd: bool
+    drilled: bool = False  # a thru_hole pad
 
 
 @dataclass
@@ -194,9 +194,10 @@ class Footprint:
         return x, y, self.label["angle"] % 180 != 0
 
     def is_value_target(self) -> bool:
-        """A 2-pad front cap Andy solders himself (any hand-fit flag on its own attr)."""
+        """A 2-pad through-hole R/C/D/L on the front, other than an LED."""
         return (self.value is not None and len(self.pads) == 2 and self.layer == "F.Cu"
-                and self.ref[:1] == "C" and self.ref[1:2].isdigit() and bool(self.attrs & HAND_FIT_FLAGS))
+                and self.ref[:1] in TARGET_PREFIXES and self.ref[1:2].isdigit() and "LED" not in self.lib.upper()
+                and ("through_hole" in self.attrs or all(pad.drilled for pad in self.pads)))
 
     def value_box(self):
         """The Value's current box when it shows on the front silk, else None."""
@@ -239,9 +240,9 @@ def parse_footprints(text: str) -> list:
             pad = block[ps:pe]
             pat = _AT.search(pad)
             size = re.search(r"\(size " + _NUM + " " + _NUM + r"\)", pad)
+            kind = re.match(r'\(pad "[^"]*" (\w+)', pad).group(1)
             fp.pads.append(Pad(float(pat.group(1)), float(pat.group(2)), float(pat.group(3) or 0),
-                               float(size.group(1)), float(size.group(2)),
-                               re.match(r'\(pad "[^"]*" (\w+)', pad).group(1) == "smd"))
+                               float(size.group(1)), float(size.group(2)), kind == "smd", kind == "thru_hole"))
         for gs, ge in spans(block, r"\n\t\t\(fp_(?:line|rect|poly|circle|arc)"):
             shape = block[gs:ge]
             points = [(float(x), float(y)) for x, y in
@@ -363,7 +364,7 @@ def plan_labels(footprints, outline=None, gap=GAP, skip=(), blocked=None) -> dic
 
 
 def plan_values(footprints, outline=None, label_plans=None, skip=(), blocked=None) -> dict:
-    """Plan the Value of every hand-fit cap: centred between its pad centres, upright along the part.
+    """Plan the Value of every 2-pad through-hole part: centred between its pad centres, upright along it.
 
     label_plans are the planned Reference labels, whose final boxes are in the way. blocked maps
     ref -> reason for placements already known to be bad (the DRC cross-check). Labels are planned
@@ -528,7 +529,7 @@ class Result:
     silk_before: Counter = field(default_factory=Counter)
     silk_after: Counter = field(default_factory=Counter)
     new_violations: set = field(default_factory=set)
-    values: dict = field(default_factory=dict)  # ref -> Plan for each hand-fit cap's Value
+    values: dict = field(default_factory=dict)  # ref -> Plan for each through-hole part's Value
 
     def count(self, action: str) -> int:
         return sum(1 for plan in self.plans.values() if plan.action == action)
@@ -540,7 +541,7 @@ class Result:
 def run(pcb: Path, pro: Path | None = None, gap: float = GAP, skip=(), kicad_cli: Path | None = None,
         drc=None, max_rounds: int = 3, values: bool = True) -> Result:
     """Plan and rewrite one board; with kicad_cli, put back any label move or placed value that
-    adds a silk DRC violation. values=False leaves the hand-fit caps' values alone.
+    adds a silk DRC violation. values=False leaves the through-hole parts' values alone.
 
     drc(kicad_cli, pcb_path, out_json) -> report is injectable for tests. The default runs kicad-cli
     without --refill-zones: silk findings don't depend on zone fill, and the runs stay sequential

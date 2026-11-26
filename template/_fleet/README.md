@@ -14,7 +14,7 @@ uv run pedal-fleet drc --templates --fail-on error
 uv run pedal-fleet drc fx-Foo --save before.json   # later: --baseline before.json
 uv run pedal-fleet new-template Name --from ~/Documents/repos/fx-Foo --title "..." --description "..."
 uv run pedal-fleet clone util-Bar --from ~/Documents/repos/util-Foo --status utility --note "..." --github public
-uv run pedal-fleet silk-labels fx-Foo --dry-run    # plan label moves and hand-fit cap values; drop --dry-run to write
+uv run pedal-fleet silk-labels fx-Foo --dry-run    # plan label moves and through-hole values; drop --dry-run to write
 uv run pedal-fleet outline --all                   # board outlines: micro-gaps, stubs, exact closure
 uv run pedal-fleet outline fx-Foo --dry-run        # show the heal as a diff; --fix writes it
 ```
@@ -68,24 +68,23 @@ pots, switches and electrolytic cans are left alone.
   back, and the run prints the silk counts before and after. `--no-drc` skips
   this check.
 
-It also shows the value of each cap you fit by hand, as a build guide. A 2-pad
-front `C` footprint whose own `(attr ...)` carries `dnp`, `exclude_from_bom` or
-`exclude_from_pos_files` (any one; the fleet uses them inconsistently) gets its
-Value field on F.SilkS at 0.8/0.15 mm, centred on the midpoint of its two pad
+It also shows the value of each 2-pad through-hole part as a build guide: films,
+ceramics, radial cans, axial resistors, diodes and inductors (`C`, `R`, `D`, `L`
+on the front, through-hole by `(attr through_hole)` or drilled pads). Its Value
+field goes on F.SilkS at 0.8/0.15 mm, centred on the midpoint of its two pad
 centres and reading along the part (0° horizontal, 90° vertical, never 180° or
 270°). The part body covers it once soldered; the reference label keeps its own
-spot.
+spot. LEDs (`D` refs on LED footprints), pots, switches, jacks, ICs and headers
+keep their own captions.
 
 - A value already shown within 0.3 mm of the midpoint, upright along the part,
   at 0.8/0.15 mm and clear of its pads is kept, so hand placements survive.
-- When the text can't clear its own pads by 0.15 mm (2.0-2.5 mm radial cans,
-  0603/1206, a 5-character value such as `220nF` on a 5 mm film pitch, where
-  `220n` fits), the run lists it as too tight instead of printing it over them.
-  A value that would hit another part's pad, a label or silk is listed too.
-- KiCad 10 `(variant ...)` blocks don't count (their `(dnp yes)` is a
-  per-variant choice), and a Value reading `DNP` or `100n (DNP)` marks a part
-  left empty, so it is listed and skipped. The flags are read from the board:
-  run Update PCB from Schematic first if they were only set in the schematic.
+- When the text can't clear its own pads by 0.15 mm (2.0-2.5 mm radial cans and
+  discs, a 5-character value such as `220nF` on a 5 mm film pitch, where `220n`
+  fits), the run lists it as too tight instead of printing it over them. A value
+  that would hit another part's pad, a label or silk is listed too.
+- A Value reading `DNP` or `100n (DNP)` marks a part left empty, so it is listed
+  and skipped.
 - `--no-values` leaves values alone.
 
 Only the `(at ...)` of each moved Reference field changes, so `git diff` shows

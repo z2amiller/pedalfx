@@ -218,22 +218,22 @@ def test_angle_folds_keep_text_upright():
     assert math.isclose(silklabels.to_board(0, 0, -90, 0, -1.55)[0], 1.55)
 
 
-# --- hand-fit cap values -------------------------------------------------------------------------
+# --- through-hole values -------------------------------------------------------------------------
 
 FILM = "Capacitor_THT:C_Rect_L7.2mm_W2.5mm_P5.00mm_FKS2_FKP2_MKS2_MKP2"
-HAND_FIT = "through_hole exclude_from_pos_files exclude_from_bom"
 
 
-def cap(ref, x, y, rot, value="22nF", attrs=HAND_FIT, pitch=5, pad=1.6, lib=FILM, ref_at=None,
-        value_at=None, value_layer="F.Fab", hide=False, font=1, extra=""):
-    """A THT cap laid out the way KiCad 10 saves one: pad 1 at the origin, pad 2 at (pitch, 0)."""
+def cap(ref, x, y, rot, value="22nF", attrs="through_hole", pitch=5, pad=1.6, lib=FILM, ref_at=None,
+        value_at=None, value_layer="F.Fab", hide=False, font=1, extra="", smd=False):
+    """A THT part laid out the way KiCad 10 saves one: pad 1 at the origin, pad 2 at (pitch, 0)."""
     rx, ry, ra = ref_at or (pitch / 2, -2.5, rot)
     vx, vy, va = value_at or (pitch / 2, 2.5, rot)
     hidden = "\t\t\t(hide yes)\n" if hide else ""
     attr = f"\t\t(attr {attrs})\n" if attrs else ""
+    kind, drill = ("smd roundrect", "") if smd else ("thru_hole circle", "\t\t\t(drill 0.8)\n")
     pads = "".join(
-        f'\t\t(pad "{n + 1}" thru_hole circle\n\t\t\t(at {n * pitch} 0 {rot})\n\t\t\t(size {pad} {pad})\n'
-        f'\t\t\t(drill 0.8)\n\t\t\t(layers "*.Cu" "*.Mask")\n\t\t\t{UUID}\n\t\t)\n' for n in range(2))
+        f'\t\t(pad "{n + 1}" {kind}\n\t\t\t(at {n * pitch} 0 {rot})\n\t\t\t(size {pad} {pad})\n'
+        f'{drill}\t\t\t(layers "*.Cu" "*.Mask")\n\t\t\t{UUID}\n\t\t)\n' for n in range(2))
     return (f'\t(footprint "{lib}"\n\t\t(layer "F.Cu")\n\t\t{UUID}\n\t\t(at {x} {y} {rot})\n'
             f'\t\t(property "Reference" "{ref}"\n\t\t\t(at {rx} {ry} {ra})\n\t\t\t(layer "F.SilkS")\n\t\t\t{UUID}\n'
             f'\t\t\t(effects\n\t\t\t\t(font\n\t\t\t\t\t(size 0.8 0.8)\n\t\t\t\t\t(thickness 0.15)\n\t\t\t\t)\n\t\t\t)\n\t\t)\n'
@@ -292,28 +292,41 @@ def test_radial_can_on_a_tight_pitch_is_reported_not_printed_over_its_pads():
     assert silklabels.rewrite(text, fps, labels, values) == text
 
 
-def test_cap_without_hand_fit_flags_is_left_alone():
-    text = board(cap("C5", 20, 20, 0, attrs="through_hole"), cap("C6", 30, 20, 0, attrs=""))
+def test_smd_part_is_left_alone():
+    # an SMD cap Andy fits by hand (1206 pads 3 mm apart) still gets no value: the rule is through-hole only
+    text = board(cap("C5", 20, 20, 0, value="10u", attrs="smd exclude_from_pos_files exclude_from_bom dnp",
+                     pitch=3, pad=1, smd=True, lib="Capacitor_SMD:C_1206_3216Metric"))
     fps, labels, values = value_plans_for(text)
     assert values == {}
-    assert silklabels.rewrite(text, fps, labels, values) == text
+    assert value_at(silklabels.rewrite(text, fps, labels, values), "C5") == value_at(text, "C5")
 
 
-@pytest.mark.parametrize("attrs", ["through_hole dnp", "exclude_from_bom", "through_hole exclude_from_pos_files",
-                                   "smd exclude_from_pos_files exclude_from_bom dnp"])
-def test_any_hand_fit_flag_counts(attrs):
+@pytest.mark.parametrize("attrs", ["through_hole", "through_hole exclude_from_bom dnp", "exclude_from_bom", ""])
+def test_through_hole_comes_from_the_attr_or_the_drilled_pads(attrs):
+    # JLC-fitted films get the value as well as hand-fit ones; an attr without through_hole falls back to the pads
     _, _, values = value_plans_for(board(cap("C7", 20, 20, 0, attrs=attrs)))
     assert values["C7"].action == "place"
 
 
-def test_a_variant_only_dnp_is_not_hand_fit():
-    variant = '\t\t(variant\n\t\t\t(name "C0G SMD Caps")\n\t\t\t(dnp yes)\n\t\t\t(exclude_from_bom yes)\n\t\t)\n'
-    _, _, values = value_plans_for(board(cap("C8", 20, 20, 0, attrs="through_hole", extra=variant)))
+@pytest.mark.parametrize("ref,value,lib,pitch", [
+    ("R1", "10k", "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal", 10.16),
+    ("D1", "1N4148", "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal", 7.62),
+    ("L1", "100u", "Inductor_THT:L_Axial_L5.3mm_D2.2mm_P10.16mm_Horizontal_Vishay_IM-1", 10.16)])
+def test_through_hole_resistors_diodes_and_inductors_get_their_value(ref, value, lib, pitch):
+    _, _, values = value_plans_for(board(cap(ref, 20, 20, 0, value=value, lib=lib, pitch=pitch)))
+    assert values[ref].action == "place"
+
+
+@pytest.mark.parametrize("ref,lib", [("D2", "LED_THT:LED_D3.0mm"), ("RV1", "_MB_potentiometers:TRIM"),
+                                     ("SW1", "Button_Switch_THT:SW_PUSH"), ("J1", "Connector:Jack")])
+def test_hand_managed_parts_are_left_alone(ref, lib):
+    # LEDs (D refs on LED footprints), pots, switches and jacks keep their own captions
+    _, _, values = value_plans_for(board(cap(ref, 20, 20, 0, value="x", lib=lib)))
     assert values == {}
 
 
 def test_value_marked_dnp_is_not_fitted_and_is_left_alone():
-    _, _, values = value_plans_for(board(cap("C9", 20, 20, 0, value="100n (DNP)", attrs="smd dnp")))
+    _, _, values = value_plans_for(board(cap("C9", 20, 20, 0, value="100n (DNP)", attrs="through_hole dnp")))
     assert values["C9"].action == "skip" and "DNP" in values["C9"].reason
 
 
@@ -375,12 +388,12 @@ def test_cli_reports_and_places_values_by_default(tmp_path, capsys):
     p.pcb.write_text(original)
     code = cli.main(["silk-labels", str(p.dir), "--dry-run", "--no-drc", "--no-process-check"])
     out = capsys.readouterr().out
-    assert code == 0 and "hand-fit cap values: 1 placed, 0 already centred, 1 left alone" in out
+    assert code == 0 and "through-hole values: 1 placed, 0 already centred, 1 left alone" in out
     assert "C1     22nF" in out and "C4     100uF  too tight" in out and "nothing written (dry run)" in out
     assert p.pcb.read_text() == original
     code = cli.main(["silk-labels", str(p.dir), "--no-drc", "--no-process-check"])
     out = capsys.readouterr().out
-    assert code == 0 and "wrote fx-S.kicad_pcb: 0 label(s) moved, 1 cap value(s) placed" in out
+    assert code == 0 and "wrote fx-S.kicad_pcb: 0 label(s) moved, 1 value(s) placed" in out
     assert value_at(p.pcb.read_text(), "C1")[:4] == (2.5, 0, 0, "F.SilkS")
 
 
@@ -390,4 +403,4 @@ def test_cli_no_values_leaves_values_alone(tmp_path, capsys):
     p.pcb.write_text(original)
     code = cli.main(["silk-labels", str(p.dir), "--no-values", "--no-drc", "--no-process-check"])
     out = capsys.readouterr().out
-    assert code == 0 and "cap values" not in out and p.pcb.read_text() == original
+    assert code == 0 and "values" not in out and p.pcb.read_text() == original

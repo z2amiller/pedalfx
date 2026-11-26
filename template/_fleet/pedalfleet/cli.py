@@ -85,13 +85,13 @@ def build_parser():
 
     sl = sub.add_parser("silk-labels",
                         help="put 2-pad passive/diode reference labels north (horizontal parts) or west (vertical), "
-                             "and hand-fit cap values on the silk between their leads")
+                             "and 2-pad through-hole parts' values on the silk between their leads")
     sl.add_argument("targets", nargs="+", help="project directories or .kicad_pro files")
     sl.add_argument("--dry-run", action="store_true", help="report the plan, write nothing")
     sl.add_argument("--gap", type=float, default=silklabels.GAP, help="mm from the part's own pads and silk to the label's edge")
     sl.add_argument("--skip", default="", help="comma-separated refs to leave alone (label and value)")
     sl.add_argument("--no-values", action="store_true",
-                    help="leave hand-fit cap values alone (default: show each one on F.SilkS between its leads)")
+                    help="leave through-hole values alone (default: show each one on F.SilkS between its leads)")
     sl.add_argument("--no-drc", action="store_true", help="skip the kicad-cli DRC cross-check")
     sl.add_argument("--kicad-cli", default=None)
     sl.add_argument("--force", action="store_true", help="proceed while KiCad runs (never with a lock file)")
@@ -378,12 +378,12 @@ def cmd_silk_labels(args, parser):
         else:
             project.pcb.write_text(result.text, encoding="utf-8")
             print(f"   wrote {project.pcb.name}: {moved} label(s) moved"
-                  + (f", {placed} cap value(s) placed" if placed else "") + "; open it in KiCad to review")
+                  + (f", {placed} value(s) placed" if placed else "") + "; open it in KiCad to review")
     return 1 if failures else 0
 
 
 def _print_values(result):
-    print(f"   hand-fit cap values: {result.count_values('place')} placed, {result.count_values('keep')} already centred, "
+    print(f"   through-hole values: {result.count_values('place')} placed, {result.count_values('keep')} already centred, "
           f"{result.count_values('blocked') + result.count_values('skip')} left alone")
     for heading, actions in (("placed", ("place",)), ("left alone", ("blocked", "skip"))):
         rows = sorted((ref, plan) for ref, plan in result.values.items() if plan.action in actions)
